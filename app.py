@@ -6,7 +6,7 @@ import json
 st.set_page_config(page_title="PDF to Quiz AI", page_icon="📝", layout="centered")
 
 # आपकी बिल्कुल सही नई AQ. वाली API Key
-genai.configure(api_key="AQ.Ab8RN6JOJhRAdA0ZP6MUYri6A_7T-Kq5Fjpbq96_4XReneMUqQ")
+genai.configure(api_key="AQ.Ab8RN6Lg43p4YdwsAq2wlb-n5HGqKsHwbdMRCvuNWKhnMpnbhw")
 
 def extract_text_from_pdf(file):
     reader = PyPDF2.PdfReader(file)
