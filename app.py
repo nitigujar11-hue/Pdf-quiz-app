@@ -46,7 +46,7 @@ def generate_quiz(text, api_key):
     
     data = {
         # OpenRouter का 100% फ्री मॉडल (Llama 3.1)
-        "model": "meta-llama/llama-3.1-8b-instruct:free",
+        "model": "google/gemma-2-9b-it:free",
         "messages": [{"role": "user", "content": prompt}]
     }
     
