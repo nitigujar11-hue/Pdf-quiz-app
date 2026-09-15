@@ -5,8 +5,13 @@ import json
 
 st.set_page_config(page_title="PDF to Quiz AI", page_icon="📝", layout="centered")
 
-# आपकी बिल्कुल सही नई AQ. वाली API Key
-genai.configure(api_key="AQ.Ab8RN6Lg43p4YdwsAq2wlb-n5HGqKsHwbdMRCvuNWKhnMpnbhw")
+st.title("📄 PDF से स्मार्ट क्विज़ 🧠")
+
+# API Key के लिए साइडबार (Sidebar)
+with st.sidebar:
+    st.header("⚙️ सेटिंग्स")
+    user_api_key = st.text_input("अपनी API Key यहाँ पेस्ट करें:", type="password")
+    st.markdown("*(API Key सुरक्षित है और कहीं सेव नहीं होगी)*")
 
 def extract_text_from_pdf(file):
     reader = PyPDF2.PdfReader(file)
@@ -15,53 +20,51 @@ def extract_text_from_pdf(file):
         text += page.extract_text()
     return text
 
-def generate_quiz(text):
-    prompt = f"""
-    तुम एक एक्सपर्ट क्विज़ मास्टर हो। नीचे दिए गए टेक्स्ट को पढ़ो और उसमें से 5 सबसे महत्वपूर्ण बहुविकल्पीय प्रश्न (MCQs) बनाओ।
-    तुम्हारा आउटपुट सिर्फ एक JSON एरे (Array) फॉर्मेट में होना चाहिए।
+def generate_quiz(text, api_key):
+    # यूज़र की डाली हुई API Key इस्तेमाल करना
+    genai.configure(api_key=api_key)
     
-    JSON का फॉर्मेट बिल्कुल ऐसा होना चाहिए:
+    prompt = f"""
+    तुम एक एक्सपर्ट क्विज़ मास्टर हो। नीचे दिए गए टेक्स्ट को पढ़ो और 5 सबसे महत्वपूर्ण बहुविकल्पीय प्रश्न (MCQs) बनाओ।
+    आउटपुट सिर्फ JSON फॉर्मेट में होना चाहिए।
+    
     [
         {{
             "question": "प्रश्न यहाँ लिखें",
             "options": ["Option A", "Option B", "Option C", "Option D"],
-            "answer": "सही विकल्प का पूरा टेक्स्ट यहाँ लिखें",
-            "explanation": "यह उत्तर सही क्यों है, 1-2 लाइन में समझाएं"
+            "answer": "सही विकल्प का पूरा टेक्स्ट",
+            "explanation": "व्याख्या"
         }}
     ]
     
-    यहाँ पीडीएफ का टेक्स्ट है:
+    टेक्स्ट:
     {text}
     """
     
-    # नया और फास्ट AI मॉडल
-    model = genai.GenerativeModel('gemini-2.5-flash')
-    
-    # AI को बताना कि जवाब सिर्फ JSON (कंप्यूटर भाषा) में देना है
-    response = model.generate_content(
-        prompt,
-        generation_config={"response_mime_type": "application/json"}
-    )
-    
-    return json.loads(response.text)
+    # सबसे स्टेबल (Stable) AI मॉडल
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    clean_text = response.text.replace("```json", "").replace("```", "").strip()
+    return json.loads(clean_text)
 
-st.title("📄 PDF से स्मार्ट क्विज़ 🧠")
-st.write("अपनी कोई भी PDF यहाँ अपलोड करें और AI तुरंत आपके लिए एक क्लिक करने वाला क्विज़ तैयार कर देगा!")
+# मुख्य वेबसाइट
+if not user_api_key:
+    st.info("👈 कृपया क्विज़ बनाने से पहले बाईं तरफ (Sidebar) में अपनी API Key पेस्ट करें।")
+else:
+    uploaded_file = st.file_uploader("यहाँ PDF अपलोड करें (Max: 200MB)", type=["pdf"])
 
-uploaded_file = st.file_uploader("यहाँ PDF अपलोड करें (Max: 200MB)", type=["pdf"])
+    if uploaded_file is not None:
+        if st.button("क्विज़ जनरेट करें ✨"):
+            with st.spinner("AI क्विज़ बना रहा है... ⏳"):
+                try:
+                    text = extract_text_from_pdf(uploaded_file)[:15000]
+                    quiz_data = generate_quiz(text, user_api_key)
+                    st.session_state.quiz_data = quiz_data
+                    st.success("क्विज़ तैयार है! 🎉")
+                except Exception as e:
+                    st.error(f"एरर आ गया: {e}")
 
-if uploaded_file is not None:
-    if st.button("क्विज़ जनरेट करें ✨"):
-        with st.spinner("AI आपकी PDF पढ़ रहा है और क्विज़ बना रहा है... कृपया कुछ सेकंड रुकें ⏳"):
-            try:
-                text = extract_text_from_pdf(uploaded_file)[:15000]
-                quiz_data = generate_quiz(text)
-                st.session_state.quiz_data = quiz_data
-                st.success("क्विज़ तैयार है! 🎉 नीचे खेलना शुरू करें:")
-            except Exception as e:
-                # अगर अब कोई एरर आएगा, तो वह हमें स्क्रीन पर साफ-साफ बता देगा कि क्या दिक्कत है
-                st.error(f"क्विज़ बनाने में दिक्कत आई। असली कारण: {e}")
-
+# क्विज़ खेलने का इंटरफेस
 if "quiz_data" in st.session_state:
     st.divider()
     for i, q in enumerate(st.session_state.quiz_data):
@@ -70,7 +73,7 @@ if "quiz_data" in st.session_state:
         
         if user_choice:
             if user_choice == q['answer']:
-                st.success(f"✅ **बिल्कुल सही!** \n\n**व्याख्या:** {q['explanation']}")
+                st.success(f"✅ **सही!** {q['explanation']}")
             else:
-                st.error(f"❌ **गलत उत्तर।** सही उत्तर है: **{q['answer']}** \n\n**व्याख्या:** {q['explanation']}")
+                st.error(f"❌ **गलत!** सही उत्तर है: **{q['answer']}**. {q['explanation']}")
         st.write("---")
