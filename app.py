@@ -49,7 +49,7 @@ def generate_quiz(text, api_key):
 if not user_api_key:
     st.info("👈 क्विज़ बनाने से पहले बाईं तरफ (Sidebar) में अपनी API Key पेस्ट करें। (अगर बॉक्स नहीं दिख रहा, तो ऊपर बाएँ कोने में `>` बटन दबाएं)")
 else:
-    uploaded_file = st.file_uploader("यहाँ PDF अपलोड करें (Max: 2TB)", type=["pdf"])
+    uploaded_file = st.file_uploader("यहाँ PDF अपलोड करें (Max: 200MB)", type=["pdf"])
 
     if uploaded_file is not None:
         if st.button("क्विज़ जनरेट करें ✨"):
