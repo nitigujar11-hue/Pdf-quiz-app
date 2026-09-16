@@ -15,7 +15,7 @@ SUBJECTS_DATA = {
         "Number System (संख्या पद्धति)", "Average (औसत)", "Mensuration 2D (क्षेत्रमिति 2D)", "MENSURATION 3D", "LCM & HCF", "SIMPLIFICATION", "AGE", "DISCOUNT", "DATA INTERPRETATION"
     ],
     "🧠 Reasoning (तर्कशक्ति)": [
-        "Coding-Decoding", "Analogy (सादृश्यता)", "Blood Relation (रक्त संबंध)", "Classification", "Logical Arrangement", "Inserting Missing Characters", "Clock & Calendar", "Sitting Arrangement ", "Rankings Text", "Venn Diagram",
+        "Coding-Decoding", "Analogy (सादृश्यता)", "Blood Relation (रक्त संबंध)", "Classification", "Logical Arrangement", "Inserting Missing Characters", "Clock & Calendar", "Sitting Arrangement", "Rankings Text", "Venn Diagram",
         "Mathematics Operation", "Statement and Conclusion", "Direction & Distance", "Series (श्रृंखला)", "Syllogism (कथन व निष्कर्ष)", "Non-Verbal Reasoning"
     ],
     "🌍 Indian Geography (भूगोल)": [
@@ -28,12 +28,13 @@ SUBJECTS_DATA = {
         "Physics (भौतिक विज्ञान)", "Chemistry (रसायन विज्ञान)", "Biology (जीव विज्ञान)","
     ],
     "🏆 Static GK (स्टैटिक जीके)": [
-        "प्रमुख लोक नृत्य एवं त्यौहार", "महत्वपूर्ण दिवस एवं थीम", "खेलकूद एवं ट्रॉफियां", "भारत के प्रमुख मंदिर व स्मारक","OTHER "
+        "प्रमुख लोक नृत्य एवं त्यौहार", "महत्वपूर्ण दिवस एवं थीम", "खेलकूद एवं ट्रॉफियां", "भारत के प्रमुख मंदिर व स्मारक","OTHER"
     ],
     "📖 सामान्य हिंदी": [
         "संधि एवं समास", "विलोम एवं पर्यायवाची शब्द", "मुहावरे एवं लोकोक्तियां", "अनेक शब्दों के लिए एक शब्द", "वर्तनी एवं वाक्य शुद्धि","OTHER"
     ]
-    "Economics": [ "ALL TOPICS " ]
+    "Economics": [ "ALL TOPICS " 
+                 ]
 }
 
 # स्टेट मैनेजमेंट
