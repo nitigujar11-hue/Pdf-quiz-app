@@ -6,7 +6,7 @@ import io
 import os
 import pickle
 import streamlit.components.v1 as components
-from PIL import Image
+from PIL import Image, ImageOps
 from streamlit_cropper import st_cropper
 
 st.set_page_config(page_title="ALL SUBJECT TEST", page_icon="📝", layout="wide")
@@ -158,15 +158,24 @@ current_key = f"{st.session_state.selected_subject}_{st.session_state.selected_c
 current_questions = st.session_state.all_questions_db.get(current_key, [])
 
 # ==========================================
-# ⚡ ऑटो-कंप्रेसर फंक्शन
+# ⚡ सुरक्षित एवं उन्नत ऑटो-कंप्रेसर फंक्शन (500 Error Fix)
 # ==========================================
-def compress_and_convert_to_bytes(img, max_width=1000, quality=80):
+def compress_and_convert_to_bytes(img, max_width=900, quality=75):
+    try:
+        # EXIF ओरिएंटेशन ठीक करना ताकि फोटो उल्टी न हो
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        pass
+
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
+        
+    # अगर इमेज बहुत बड़ी है तो उसका साइज़ ऑटोमैटिक घटाएं
     if img.width > max_width:
         ratio = max_width / float(img.width)
         new_height = int((float(img.height) * float(ratio)))
         img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+        
     buf = io.BytesIO()
     img.save(buf, format="JPEG", optimize=True, quality=quality)
     return buf.getvalue()
@@ -364,11 +373,14 @@ with st.sidebar:
                             q_i = st.file_uploader("प्रश्न की फोटो:", type=["png", "jpg", "jpeg"], key="h_qi")
                             final_q_img = None
                             if q_i:
-                                pil_img_q = Image.open(q_i)
-                                st.caption("✂️ प्रश्न का हिस्सा क्रॉप करें:")
-                                cropped_q = st_cropper(pil_img_q, realtime_update=True, box_color='#00FF00', aspect_ratio=None, key="crop_q")
-                                final_q_img = compress_and_convert_to_bytes(cropped_q)
-                                st.image(final_q_img, caption="प्रश्न फोटो", width=220)
+                                try:
+                                    pil_img_q = Image.open(q_i)
+                                    st.caption("✂️ प्रश्न का हिस्सा क्रॉप करें:")
+                                    cropped_q = st_cropper(pil_img_q, realtime_update=True, box_color='#00FF00', aspect_ratio=None, key="crop_q")
+                                    final_q_img = compress_and_convert_to_bytes(cropped_q)
+                                    st.image(final_q_img, caption="प्रश्न फोटो", width=220)
+                                except Exception as e:
+                                    st.error(f"फोटो प्रोसेस करने में त्रुटि: {e}")
 
                             st.write("---")
                             st.markdown("### 2. चारों विकल्प (टेक्स्ट या फोटो):")
@@ -400,11 +412,14 @@ with st.sidebar:
                             sol_i = st.file_uploader("सॉल्यूशन फोटो:", type=["png", "jpg", "jpeg"], key="h_sol")
                             final_sol_img = None
                             if sol_i:
-                                pil_img_s = Image.open(sol_i)
-                                st.caption("✂️ सॉल्यूशन का हिस्सा क्रॉप करें:")
-                                cropped_s = st_cropper(pil_img_s, realtime_update=True, box_color='#0000FF', aspect_ratio=None, key="crop_s")
-                                final_sol_img = compress_and_convert_to_bytes(cropped_s)
-                                st.image(final_sol_img, caption="सॉल्यूशन फोटो", width=220)
+                                try:
+                                    pil_img_s = Image.open(sol_i)
+                                    st.caption("✂️ सॉल्यूशन का हिस्सा क्रॉप करें:")
+                                    cropped_s = st_cropper(pil_img_s, realtime_update=True, box_color='#0000FF', aspect_ratio=None, key="crop_s")
+                                    final_sol_img = compress_and_convert_to_bytes(cropped_s)
+                                    st.image(final_sol_img, caption="सॉल्यूशन फोटो", width=220)
+                                except Exception as e:
+                                    st.error(f"सॉल्यूशन फोटो प्रोसेस करने में त्रुटि: {e}")
 
                             if st.button("सवाल सेव करें 💾", key="h_save_q_btn"):
                                 if not q_t and not final_q_img:
