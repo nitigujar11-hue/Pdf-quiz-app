@@ -93,9 +93,8 @@ if not st.session_state.is_admin:
     st.markdown("""
         <style>
         #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
         .stDeployButton {display:none;}
+        footer {visibility: hidden;}
         div[data-testid="stToolbar"] {visibility: hidden; display: none !important;}
         </style>
     """, unsafe_allow_html=True)
@@ -103,7 +102,6 @@ else:
     st.markdown("""
         <style>
         #MainMenu {visibility: visible;}
-        header {visibility: visible;}
         div[data-testid="stToolbar"] {visibility: visible !important;}
         </style>
     """, unsafe_allow_html=True)
@@ -153,6 +151,8 @@ if "start_time" not in st.session_state:
     st.session_state.start_time = None
 if "time_limit_seconds" not in st.session_state:
     st.session_state.time_limit_seconds = 0
+if "is_reattempt_flow" not in st.session_state:
+    st.session_state.is_reattempt_flow = False
 
 current_key = f"{st.session_state.selected_subject}_{st.session_state.selected_chapter}"
 current_questions = st.session_state.all_questions_db.get(current_key, [])
@@ -171,6 +171,9 @@ def compress_and_convert_to_bytes(img, max_width=1000, quality=80):
     img.save(buf, format="JPEG", optimize=True, quality=quality)
     return buf.getvalue()
 
+# ==========================================
+# 📊 टेस्ट सबमिट एवं रैंक/पर्सेंटाइल गणना
+# ==========================================
 def calculate_and_submit_quiz(is_timeout=False):
     st.session_state.submitted = True
     st.session_state.quiz_started = False
@@ -193,42 +196,65 @@ def calculate_and_submit_quiz(is_timeout=False):
             wrong += 1
 
     max_marks = total * mark_per_q
-    final_score = (correct * mark_per_q) - (wrong * neg)
+    raw_score = (correct * mark_per_q) - (wrong * neg)
     accuracy = (correct / (correct + wrong) * 100) if (correct + wrong) > 0 else 0
 
     if current_key not in st.session_state.attempt_history:
         st.session_state.attempt_history[current_key] = []
 
-    attempt_num = len(st.session_state.attempt_history[current_key]) + 1
+    past_attempts = st.session_state.attempt_history[current_key]
+    past_scores = [att.get("raw_score", 0.0) for att in past_attempts]
+    all_scores = past_scores + [raw_score]
+    all_scores.sort(reverse=True)
+    
+    current_rank = all_scores.index(raw_score) + 1
+    total_participants = len(all_scores)
+    
+    if total_participants > 1:
+        below_count = sum(1 for s in all_scores if s < raw_score)
+        percentile = (below_count / (total_participants - 1)) * 100
+    else:
+        percentile = 100.0
+
+    attempt_num = len(past_attempts) + 1
     reason = " (समय समाप्त)" if is_timeout else ""
     st.session_state.attempt_history[current_key].append({
-        "अटेम्प्ट (Attempt)": f"प्रयास #{attempt_num}{reason}",
-        "तारीख व समय": datetime.now().strftime("%d-%m-%Y %H:%M"),
-        "कुल प्रश्न": total,
-        "अंतिम स्कोर": f"{final_score:.2f} / {max_marks:.0f}",
-        "सही उत्तर": correct,
-        "गलत उत्तर": wrong,
-        "छोड़े गए": unattempted,
-        "सटीकता (Accuracy)": f"{accuracy:.1f}%"
+        "अटेम्प्ट": f"प्रयास #{attempt_num}{reason}",
+        "तारीख": datetime.now().strftime("%d-%m-%Y %H:%M"),
+        "raw_score": raw_score,
+        "प्राप्तांक": f"{raw_score:.2f} / {max_marks:.0f}",
+        "सही (Correct)": correct,
+        "गलत (Wrong)": wrong,
+        "छोड़े (Skipped)": unattempted,
+        "सटीकता": f"{accuracy:.1f}%",
+        "रैंक": f"{current_rank} / {total_participants}",
+        "पर्सेंटाइल": f"{percentile:.1f}%",
+        "user_answers": dict(st.session_state.user_answers)
     })
     save_permanent_data()
 
-# --- साइडबार: एडमिन लॉगिन और "Editing All" मास्टर कंट्रोल ---
+# ==========================================
+# 🔑 एडमिन लॉगिन डायलॉग
+# ==========================================
+@st.dialog("🔐 एडमिन लॉगिन पोर्टल")
+def admin_login_dialog():
+    st.write("एडमिन कंट्रोल्स एवं 'Editing All' एक्सेस करने के लिए पासवर्ड दर्ज करें:")
+    pwd = st.text_input("पासवर्ड (Password):", type="password", key="dlg_pwd")
+    if st.button("लॉगिन करें 🚀", type="primary", use_container_width=True):
+        if pwd == ADMIN_PASSWORD:
+            st.session_state.is_admin = True
+            st.success("सफलतापूर्वक एडमिन मोड चालू हो गया!")
+            time.sleep(0.5)
+            st.rerun()
+        else:
+            st.error("गलत पासवर्ड! कृपया दोबारा प्रयास करें।")
+
+# --- साइडबार: एडमिन कंट्रोल हब ---
 with st.sidebar:
     st.title("🔐 पोर्टल नियंत्रण")
     st.caption(f"Sync ID: {CURRENT_SYSTEM_VERSION}")
     
-    if not st.session_state.is_admin:
-        with st.expander("🔑 एडमिन लॉगिन (केवल ओनर के लिए)"):
-            admin_pwd = st.text_input("पासवर्ड डालें:", type="password")
-            if st.button("लॉगिन"):
-                if admin_pwd == ADMIN_PASSWORD:
-                    st.session_state.is_admin = True
-                    st.success("एडमिन मोड चालू हो गया!")
-                    st.rerun()
-                else:
-                    st.error("गलत पासवर्ड!")
-    else:
+    if st.session_state.is_admin:
         st.success("👨‍🏫 आप एडमिन के रूप में लॉगिन हैं")
         if st.button("लॉगआउट (स्टूडेंट मोड)"):
             st.session_state.is_admin = False
@@ -418,9 +444,11 @@ with st.sidebar:
                                 st.rerun()
                     else:
                         st.caption("इस विषय में कोई चैप्टर नहीं है।")
+    else:
+        st.info("एडमिन फीचर्स एक्सेस करने के लिए नीचे दिए गए बटन से लॉगिन करें।")
 
 # ==========================================
-# 📲 टॉप हेडर: शेयर बटन कंपोनेंट
+# 📲 टॉप हेडर: शेयर बटन
 # ==========================================
 col_h_left, col_h_right = st.columns([3, 1])
 with col_h_right:
@@ -462,12 +490,56 @@ with col_h_right:
     </script>
     """, height=45)
 
+# सामान्य सॉल्यूशन कार्ड रेंडरर
+def render_solution_card(index_list, answers_dict, empty_msg="इस श्रेणी में कोई प्रश्न नहीं है।"):
+    if not index_list:
+        st.info(empty_msg)
+        return
+
+    for idx in index_list:
+        q = current_questions[idx]
+        ans = answers_dict.get(idx)
+        
+        if ans is None:
+            badge = "⚪ अनअटेम्प्ट"
+        elif ans == q['answer']:
+            badge = "✅ सही"
+        else:
+            badge = "❌ गलत"
+
+        with st.expander(f"प्रश्न {idx+1} [{badge}] : {q['question_text'][:45]}..."):
+            st.markdown(f"### प्रश्न {idx+1}: {q['question_text']}")
+            if q.get("question_image"):
+                st.image(q["question_image"], width=420)
+
+            opt_imgs = q.get("options_image", {})
+            if any(opt_imgs.values()):
+                cols_sol_opt = st.columns(4)
+                for i_k, k in enumerate(["A", "B", "C", "D"]):
+                    with cols_sol_opt[i_k]:
+                        if opt_imgs.get(k):
+                            st.caption(f"विकल्प {k}:")
+                            st.image(opt_imgs[k], use_container_width=True)
+
+            st.write(f"**A)** {q['options_text']['A']}")
+            st.write(f"**B)** {q['options_text']['B']}")
+            st.write(f"**C)** {q['options_text']['C']}")
+            st.write(f"**D)** {q['options_text']['D']}")
+
+            st.write("---")
+            st.write(f"**आपका चयन:** {ans if ans else 'उत्तर नहीं दिया (Unattempted)'}")
+            st.write(f"**सही उत्तर:** :green[**विकल्प {q['answer']}**]")
+            
+            if q.get('sol_image') is not None:
+                st.write("📸 **सॉल्यूशन फोटो:**")
+                st.image(q['sol_image'], use_container_width=True)
+            else:
+                st.caption("इस सवाल के लिए कोई सॉल्यूशन फोटो उपलब्ध नहीं है।")
 
 # ==============================================================================
-# 🎯 1. मुख्य स्क्रीन: प्रीमियम एग्जाम डैशबोर्ड (Professional UI)
+# 🎯 1. मुख्य स्क्रीन: प्रीमियम एग्जाम डैशबोर्ड
 # ==============================================================================
 if st.session_state.selected_subject is None:
-    # डैशबोर्ड कस्टम स्टाइलिंग
     st.markdown("""
         <style>
         .hero-banner {
@@ -487,17 +559,9 @@ if st.session_state.selected_subject is None:
             font-size: 14px;
             opacity: 0.9;
         }
-        .stat-card {
-            background: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            border-radius: 12px;
-            padding: 12px;
-            text-align: center;
-        }
         </style>
     """, unsafe_allow_html=True)
 
-    # हीरो सेक्शन (बैनर)
     st.markdown("""
         <div class="hero-banner">
             <div class="hero-title">🎯 परीक्षा तैयारी पोर्टल (Exam Prep Hub)</div>
@@ -505,7 +569,6 @@ if st.session_state.selected_subject is None:
         </div>
     """, unsafe_allow_html=True)
 
-    # लाइव स्टैट्स मीटर (Dashboard Quick Stats)
     all_active_subjects = list(st.session_state.subjects_data.keys())
     total_subjects_count = len(all_active_subjects)
     total_chapters_count = sum(len(v) for v in st.session_state.subjects_data.values())
@@ -527,9 +590,8 @@ if st.session_state.selected_subject is None:
     st.caption("नीचे दिए गए किसी भी विषय पर क्लिक करके अभ्यास शुरू करें:")
 
     if not all_active_subjects:
-        st.warning("अभी कोई विषय उपलब्ध नहीं है। कृपया एडमिन साइडबार से नए विषय जोड़ें।")
+        st.warning("अभी कोई विषय उपलब्ध नहीं है।")
     else:
-        # कार्ड ग्रिड व्यू
         cols = st.columns(3)
         for index, subj in enumerate(all_active_subjects):
             with cols[index % 3]:
@@ -541,6 +603,18 @@ if st.session_state.selected_subject is None:
                         st.session_state.selected_subject = subj
                         st.rerun()
 
+    st.write("")
+    st.write("---")
+    col_adm_space, col_adm_btn = st.columns([3, 1])
+    with col_adm_btn:
+        if not st.session_state.is_admin:
+            if st.button("🔑 एडमिन लॉगिन (Owner Access)", use_container_width=True):
+                admin_login_dialog()
+        else:
+            st.success("👨‍🏫 एडमिन मोड सक्रिय है")
+            if st.button("🚪 एडमिन लॉगआउट", use_container_width=True):
+                st.session_state.is_admin = False
+                st.rerun()
 
 # --- 2. मुख्य स्क्रीन: अध्याय चयन ---
 elif st.session_state.selected_chapter is None:
@@ -551,7 +625,7 @@ elif st.session_state.selected_chapter is None:
 
     chapters = st.session_state.subjects_data.get(st.session_state.selected_subject, [])
     if not chapters:
-        st.warning("इस विषय में अभी कोई चैप्टर मौजूद नहीं है। कृपया साइडबार से चैप्टर जोड़ें।")
+        st.warning("इस विषय में अभी कोई चैप्टर मौजूद नहीं है।")
     else:
         cols = st.columns(2)
         for index, chap in enumerate(chapters):
@@ -561,8 +635,7 @@ elif st.session_state.selected_chapter is None:
                     st.session_state.selected_chapter = chap
                     st.rerun()
 
-
-# --- 3. मुख्य स्क्रीन: मॉक टेस्ट व रिजल्ट ---
+# --- 3. मुख्य स्क्रीन: मॉक टेस्ट व एडवांस्ड रिजल्ट ---
 else:
     col_back, col_title = st.columns([1, 4])
     with col_back:
@@ -571,12 +644,16 @@ else:
             st.session_state.quiz_started = False
             st.session_state.submitted = False
             st.session_state.user_answers = {}
+            st.session_state.is_reattempt_flow = False
             st.rerun()
     with col_title:
         st.subheader(f"📌 {st.session_state.selected_subject} ➔ {st.session_state.selected_chapter}")
 
     st.divider()
 
+    past_attempts = st.session_state.attempt_history.get(current_key, [])
+
+    # स्थिति 1: टेस्ट शुरू होने से पहले
     if not st.session_state.quiz_started and not st.session_state.submitted:
         st.write(f"**उपलब्ध प्रश्न:** {len(current_questions)}")
         
@@ -605,21 +682,87 @@ else:
             )
             st.session_state.time_limit_seconds = time_choice * 60
 
-        past_attempts = st.session_state.attempt_history.get(current_key, [])
-        if past_attempts:
-            with st.expander(f"📜 आपके पिछले प्रयासों का रिकॉर्ड (कुल {len(past_attempts)} बार टेस्ट दिया)", expanded=True):
-                df_history = pd.DataFrame(past_attempts)
-                st.dataframe(df_history, use_container_width=True)
-
         if len(current_questions) == 0:
-            st.warning("⚠️ इस चैप्टर में अभी कोई टेस्ट उपलब्ध नहीं है। एडमिन 'Editing All' फोल्डर से नए प्रश्न जोड़ सकते हैं।")
+            st.warning("⚠️ इस चैप्टर में अभी कोई टेस्ट उपलब्ध नहीं है।")
         else:
-            if st.button("🚀 स्टार्ट टेस्ट (Start Test)", type="primary"):
-                st.session_state.quiz_started = True
-                st.session_state.start_time = time.time()
-                st.rerun()
+            if past_attempts:
+                st.write("")
+                col_act1, col_act2 = st.columns(2)
+                with col_act1:
+                    if st.button("📊 View Result (पिछला रिजल्ट देखें)", use_container_width=True):
+                        st.session_state.submitted = True
+                        st.session_state.quiz_started = False
+                        st.rerun()
+                with col_act2:
+                    if st.button("🔄 Re-attempt Test (दोबारा टेस्ट दें)", type="primary", use_container_width=True):
+                        st.session_state.is_reattempt_flow = True
+                        st.session_state.quiz_started = True
+                        st.session_state.start_time = time.time()
+                        st.session_state.user_answers = {}
+                        st.rerun()
+            else:
+                if st.button("🚀 स्टार्ट टेस्ट (Start Test)", type="primary", use_container_width=True):
+                    st.session_state.quiz_started = True
+                    st.session_state.start_time = time.time()
+                    st.rerun()
 
+    # स्थिति 2: टेस्ट चल रहा है (लाइव)
     elif st.session_state.quiz_started and not st.session_state.submitted:
+        
+        # 📊 री-अटेम्प्ट हिस्ट्री चार्ट एवं पिछले प्रश्नों का समाधान
+        if past_attempts:
+            next_attempt_num = len(past_attempts) + 1
+            with st.container(border=True):
+                st.info(f"🎯 **आप प्रयास #{next_attempt_num} दे रहे हैं** (अब तक आपने कुल **{len(past_attempts)}** प्रयास पूरे किए हैं)")
+                
+                with st.expander("📈 पिछले सभी प्रयासों का चार्ट व विवरण देखें", expanded=True):
+                    clean_history = []
+                    for h in past_attempts:
+                        clean_history.append({
+                            "प्रयास": h.get("अटेम्प्ट"),
+                            "प्राप्तांक": h.get("raw_score", 0.0),
+                            "सही": h.get("सही (Correct)", 0),
+                            "गलत": h.get("गलत (Wrong)", 0),
+                            "छोड़े गए": h.get("छोड़े (Skipped)", 0),
+                            "सटीकता": h.get("सटीकता", "0%"),
+                            "तारीख": h.get("तारीख", "")
+                        })
+                    df_chart = pd.DataFrame(clean_history)
+                    st.bar_chart(df_chart.set_index("प्रयास")[["प्राप्तांक", "सही", "गलत"]])
+                    st.dataframe(df_chart, use_container_width=True)
+
+                # पिछले प्रयासों के सवाल व सॉल्यूशन
+                with st.expander("🔍 पिछले प्रयासों के सवाल व सॉल्यूशन देखें (Right, Wrong, Unattempted)"):
+                    att_labels = [f"प्रयास #{i+1} ({att.get('तारीख', '')})" for i, att in enumerate(past_attempts)]
+                    chosen_att_idx = st.selectbox("किस प्रयास के सवाल देखना चाहते हैं?", range(len(att_labels)), format_func=lambda x: att_labels[x])
+                    
+                    target_att = past_attempts[chosen_att_idx]
+                    past_user_ans = target_att.get("user_answers", {})
+                    
+                    p_cor = []
+                    p_inc = []
+                    p_una = []
+                    for idx, q in enumerate(current_questions):
+                        a = past_user_ans.get(idx)
+                        if a is None:
+                            p_una.append(idx)
+                        elif a == q['answer']:
+                            p_cor.append(idx)
+                        else:
+                            p_inc.append(idx)
+
+                    p_t_cor, p_t_inc, p_t_una = st.tabs([
+                        f"✅ सही प्रश्न ({len(p_cor)})", 
+                        f"❌ गलत प्रश्न ({len(p_inc)})", 
+                        f"⚪ अनअटेम्प्ट प्रश्न ({len(p_una)})"
+                    ])
+                    with p_t_cor:
+                        render_solution_card(p_cor, past_user_ans, "इस प्रयास में कोई सही उत्तर नहीं था।")
+                    with p_t_inc:
+                        render_solution_card(p_inc, past_user_ans, "इस प्रयास में कोई गलत उत्तर नहीं था।")
+                    with p_t_una:
+                        render_solution_card(p_una, past_user_ans, "इस प्रयास में कोई अनअटेम्प्ट प्रश्न नहीं था।")
+
         if st.session_state.time_limit_seconds > 0:
             elapsed = time.time() - st.session_state.start_time
             remaining = st.session_state.time_limit_seconds - elapsed
@@ -698,58 +841,71 @@ else:
             calculate_and_submit_quiz(is_timeout=False)
             st.rerun()
 
+    # ==============================================================================
+    # 🏆 स्थिति 3: रिजल्ट स्क्रीन
+    # ==============================================================================
     elif st.session_state.submitted:
-        st.header("📊 आपकी परफॉर्मेंस रिपोर्ट")
+        st.header("📊 आपकी संपूर्ण परफॉर्मेंस रिपोर्ट (Performance Report)")
         
-        current_attempt = st.session_state.attempt_history[current_key][-1]
+        current_attempt = past_attempts[-1] if past_attempts else {}
+        cur_answers = current_attempt.get("user_answers", st.session_state.user_answers)
 
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("अंतिम स्कोर (Score)", current_attempt["अंतिम स्कोर"])
-        c2.metric("सटीकता (Accuracy)", current_attempt["सटीकता (Accuracy)"])
-        c3.metric("सही (Correct)", current_attempt["सही उत्तर"])
-        c4.metric("गलत (Wrong)", current_attempt["गलत उत्तर"])
-        c5.metric("छोड़े गए (Skipped)", current_attempt["छोड़े गए"])
+        with st.container(border=True):
+            r_c1, r_c2, r_c3, r_c4 = st.columns(4)
+            r_c1.metric("🎯 स्कोर (Score)", current_attempt.get("प्राप्तांक", "0"))
+            r_c2.metric("🏆 ओवरऑल रैंक", current_attempt.get("रैंक", "1 / 1"))
+            r_c3.metric("📈 पर्सेंटाइल", current_attempt.get("पर्सेंटाइल", "100.0%"))
+            r_c4.metric("⚡ सटीकता (Accuracy)", current_attempt.get("सटीकता", "0%"))
+
+            st.write("---")
+            q_c1, q_c2, q_c3, q_c4 = st.columns(4)
+            q_c1.metric("📝 कुल प्रश्न", current_attempt.get("कुल प्रश्न", len(current_questions)))
+            q_c2.metric("✅ सही (Correct)", current_attempt.get("सही (Correct)", 0))
+            q_c3.metric("❌ गलत (Incorrect)", current_attempt.get("गलत (Wrong)", 0))
+            q_c4.metric("⚪ अनअटेम्प्ट (Unattempted)", current_attempt.get("छोड़े (Skipped)", 0))
+
+        correct_indices = []
+        incorrect_indices = []
+        unattempted_indices = []
+
+        for idx, q in enumerate(current_questions):
+            ans = cur_answers.get(idx)
+            if ans is None:
+                unattempted_indices.append(idx)
+            elif ans == q['answer']:
+                correct_indices.append(idx)
+            else:
+                incorrect_indices.append(idx)
 
         st.divider()
+        st.subheader("🔍 प्रश्नों का विस्तृत हल एवं विश्लेषण (Question Analysis)")
+        
+        tab_all, tab_cor, tab_inc, tab_un = st.tabs([
+            f"📑 View All (कुल {len(current_questions)})",
+            f"✅ Correct ({len(correct_indices)})",
+            f"❌ Incorrect ({len(incorrect_indices)})",
+            f"⚪ Unattempted ({len(unattempted_indices)})"
+        ])
 
-        col_btn1, col_btn2 = st.columns([1, 2])
-        with col_btn1:
-            if st.button("🔄 री-अटेम्प्ट टेस्ट (Re-attempt Test)", type="primary"):
+        with tab_all:
+            render_solution_card(list(range(len(current_questions))), cur_answers)
+        with tab_cor:
+            render_solution_card(correct_indices, cur_answers, "आपने कोई भी सही उत्तर नहीं दिया है।")
+        with tab_inc:
+            render_solution_card(incorrect_indices, cur_answers, "शानदार! आपका एक भी सवाल गलत नहीं हुआ है।")
+        with tab_un:
+            render_solution_card(unattempted_indices, cur_answers, "आपने सारे सवाल हल किए हैं, कोई भी सवाल नहीं छोड़ा!")
+
+        st.divider()
+        st.write("### 📌 आगे की कार्रवाई चुनें:")
+        col_res1, col_res2 = st.columns(2)
+        with col_res1:
+            if st.button("📊 View Result (दोबारा ऊपर जाएं)", use_container_width=True):
+                st.rerun()
+        with col_res2:
+            if st.button("🔄 Re-attempt Test (दोबारा टेस्ट दें)", type="primary", use_container_width=True):
                 st.session_state.submitted = False
                 st.session_state.quiz_started = True
                 st.session_state.start_time = time.time()
                 st.session_state.user_answers = {}
                 st.rerun()
-
-        with st.expander("📜 आपके सभी री-अटेम्प्ट्स का इतिहास देखें", expanded=True):
-            df_history = pd.DataFrame(st.session_state.attempt_history[current_key])
-            st.table(df_history)
-
-        st.divider()
-        st.subheader("🔍 प्रश्नों का विस्तृत हल (Solutions)")
-        for idx, q in enumerate(current_questions):
-            ans = st.session_state.user_answers.get(idx)
-            is_correct = (ans == q['answer'])
-
-            with st.expander(f"प्रश्न {idx+1}: {'✅ सही' if is_correct else '❌ गलत/छोड़ा'} - {q['question_text'][:40]}..."):
-                st.write(f"**प्रश्न {idx+1}:** {q['question_text']}")
-                if q.get("question_image"):
-                    st.image(q["question_image"], width=420)
-
-                opt_imgs = q.get("options_image", {})
-                if any(opt_imgs.values()):
-                    cols_sol_opt = st.columns(4)
-                    for i_k, k in enumerate(["A", "B", "C", "D"]):
-                        with cols_sol_opt[i_k]:
-                            if opt_imgs.get(k):
-                                st.caption(f"विकल्प {k}:")
-                                st.image(opt_imgs[k], use_container_width=True)
-
-                st.write(f"**आपका चयन:** {ans if ans else 'उत्तर नहीं दिया'}")
-                st.write(f"**सही विकल्प:** :green[{q['answer']}]")
-                
-                if q.get('sol_image') is not None:
-                    st.write("📸 **सॉल्यूशन फोटो:**")
-                    st.image(q['sol_image'], use_container_width=True)
-                else:
-                    st.caption("इस सवाल के लिए कोई सॉल्यूशन फोटो अपलोड नहीं की गई है।")
