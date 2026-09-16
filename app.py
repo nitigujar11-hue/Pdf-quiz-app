@@ -2,39 +2,47 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="ALL SUBJECT TEXT", page_icon="📝", layout="wide")
+st.set_page_config(page_title="ALL SUBJECT TEST", page_icon="📝", layout="wide")
 
 # एडमिन पासवर्ड
 ADMIN_PASSWORD = "NINI@123"
 
-# विषय और उनके सभी चैप्टर्स की लिस्ट
+# विषय और उनके सभी चैप्टर्स की लिस्ट (सिंटैक्स ठीक कर दिया गया है)
 SUBJECTS_DATA = {
     "🔢 Mathematics (गणित)": [
-        "Percentage (प्रतिशत)", "Profit & Loss (लाभ और हानि)", "PATNERSHIP", "Ratio & Proportion (अनुपात)",
+        "Percentage (प्रतिशत)", "Profit & Loss (लाभ और हानि)", "PARTNERSHIP", "Ratio & Proportion (अनुपात)",
         "Simple & Compound Interest", "Time & Work (कार्य और समय)", "Speed, Time & Distance", "TRAIN", 
-        "Number System (संख्या पद्धति)", "Average (औसत)", "Mensuration 2D (क्षेत्रमिति 2D)", "MENSURATION 3D", "LCM & HCF", "SIMPLIFICATION", "AGE", "DISCOUNT", "DATA INTERPRETATION"
+        "Number System (संख्या पद्धति)", "Average (औसत)", "Mensuration 2D (क्षेत्रमिति 2D)", "MENSURATION 3D", 
+        "LCM & HCF", "SIMPLIFICATION", "AGE", "DISCOUNT", "DATA INTERPRETATION"
     ],
     "🧠 Reasoning (तर्कशक्ति)": [
-        "Coding-Decoding", "Analogy (सादृश्यता)", "Blood Relation (रक्त संबंध)", "Classification", "Logical Arrangement", "Inserting Missing Characters", "Clock & Calendar", "Sitting Arrangement", "Rankings Text", "Venn Diagram",
-        "Mathematics Operation", "Statement and Conclusion", "Direction & Distance", "Series (श्रृंखला)", "Syllogism (कथन व निष्कर्ष)", "Non-Verbal Reasoning"
+        "Coding-Decoding", "Analogy (सादृश्यता)", "Blood Relation (रक्त संबंध)", "Classification", 
+        "Logical Arrangement", "Inserting Missing Characters", "Clock & Calendar", "Sitting Arrangement", 
+        "Rankings Test", "Venn Diagram", "Mathematics Operation", "Statement and Conclusion", 
+        "Direction & Distance", "Series (श्रृंखला)", "Syllogism (कथन व निष्कर्ष)", "Non-Verbal Reasoning"
     ],
     "🌍 Indian Geography (भूगोल)": [
-        "भारत की नदियाँ एवं झीलें", "पर्वत एवं पठार", "जलवायु एवं मानसून", "कृषि एवं खनिज संसाधन", "राष्ट्रीय उद्यान एवं अभयारण्य", "Other"
+        "भारत की नदियाँ एवं झीलें", "पर्वत एवं पठार", "जलवायु एवं मानसून", "कृषि एवं खनिज संसाधन", 
+        "राष्ट्रीय उद्यान एवं अभयारण्य", "Other"
     ],
     "🏛️ Indian Polity (राजव्यवस्था)": [
-        "संविधान की प्रस्तावना व स्रोत", "मौलिक अधिकार एवं कर्तव्य", "राष्ट्रपति एवं संसद", "न्यायपालिका (Supreme Court)", "पंचायती राज व संशोधन","OTHER"
+        "संविधान की प्रस्तावना व स्रोत", "मौलिक अधिकार एवं कर्तव्य", "राष्ट्रपति एवं संसद", 
+        "न्यायपालिका (Supreme Court)", "पंचायती राज व संशोधन", "OTHER"
     ],
     "💡 General Science (सामान्य विज्ञान)": [
-        "Physics (भौतिक विज्ञान)", "Chemistry (रसायन विज्ञान)", "Biology (जीव विज्ञान)","
+        "Physics (भौतिक विज्ञान)", "Chemistry (रसायन विज्ञान)", "Biology (जीव विज्ञान)", "OTHER"
     ],
     "🏆 Static GK (स्टैटिक जीके)": [
-        "प्रमुख लोक नृत्य एवं त्यौहार", "महत्वपूर्ण दिवस एवं थीम", "खेलकूद एवं ट्रॉफियां", "भारत के प्रमुख मंदिर व स्मारक","OTHER"
+        "प्रमुख लोक नृत्य एवं त्यौहार", "महत्वपूर्ण दिवस एवं थीम", "खेलकूद एवं ट्रॉफियां", 
+        "भारत के प्रमुख मंदिर व स्मारक", "OTHER"
     ],
     "📖 सामान्य हिंदी": [
-        "संधि एवं समास", "विलोम एवं पर्यायवाची शब्द", "मुहावरे एवं लोकोक्तियां", "अनेक शब्दों के लिए एक शब्द", "वर्तनी एवं वाक्य शुद्धि","OTHER"
+        "संधि एवं समास", "विलोम एवं पर्यायवाची शब्द", "मुहावरे एवं लोकोक्तियां", 
+        "अनेक शब्दों के लिए एक शब्द", "वर्तनी एवं वाक्य शुद्धि", "OTHER"
+    ],
+    "📊 Economics": [
+        "ALL TOPICS"
     ]
-    "Economics": [ "ALL TOPICS " 
-                 ]
 }
 
 # स्टेट मैनेजमेंट
@@ -158,16 +166,27 @@ else:
 
     st.divider()
 
-    # टेस्ट शुरू करने से पहले
+    # टेस्ट शुरू करने से पहले (अंक और नेगेटिव मार्किंग चयन)
     if not st.session_state.quiz_started and not st.session_state.submitted:
         st.write(f"**उपलब्ध प्रश्न:** {len(current_questions)}")
         
-        neg_val = st.selectbox(
-            "मॉक टेस्ट के लिए नेगेटिव मार्किंग चुनें:",
-            [0.0, 0.25, 0.33, 0.50],
-            format_func=lambda x: f"-{x} अंक प्रति गलत उत्तर" if x > 0 else "कोई नेगेटिव मार्किंग नहीं (0.00)"
-        )
-        st.session_state.selected_neg = neg_val
+        opt_col1, opt_col2 = st.columns(2)
+        
+        with opt_col1:
+            marks_per_q = st.selectbox(
+                "प्रत्येक सही उत्तर के लिए अंक चुनें:",
+                [1.0, 2.0, 3.0, 4.0],
+                format_func=lambda x: f"+{int(x)} अंक प्रति सही उत्तर"
+            )
+            st.session_state.selected_marks = marks_per_q
+
+        with opt_col2:
+            neg_val = st.selectbox(
+                "नेगेटिव मार्किंग चुनें:",
+                [0.0, 0.25, 0.33, 0.50, 1.0],
+                format_func=lambda x: f"-{x} अंक प्रति गलत उत्तर" if x > 0 else "कोई नेगेटिव मार्किंग नहीं (0.00)"
+            )
+            st.session_state.selected_neg = neg_val
 
         # पिछले प्रयासों का रिकॉर्ड दिखाना
         past_attempts = st.session_state.attempt_history.get(current_key, [])
@@ -185,7 +204,7 @@ else:
 
     # लाइव मॉक टेस्ट
     elif st.session_state.quiz_started and not st.session_state.submitted:
-        st.caption(f"नेगेटिव मार्किंग: -{st.session_state.get('selected_neg', 0.0)} अंक प्रति गलत उत्तर")
+        st.caption(f"नियम: सही उत्तर पर +{int(st.session_state.get('selected_marks', 1.0))} अंक | गलत उत्तर पर -{st.session_state.get('selected_neg', 0.0)} अंक")
         
         for idx, q in enumerate(current_questions):
             st.markdown(f"#### Q{idx+1}. {q['question']}")
@@ -202,6 +221,8 @@ else:
             correct = 0
             wrong = 0
             unattempted = 0
+            
+            mark_per_q = st.session_state.get("selected_marks", 1.0)
             neg = st.session_state.get("selected_neg", 0.0)
 
             for idx, q in enumerate(current_questions):
@@ -213,7 +234,8 @@ else:
                 else:
                     wrong += 1
 
-            final_score = (correct * 2.0) - (wrong * neg)
+            max_marks = total * mark_per_q
+            final_score = (correct * mark_per_q) - (wrong * neg)
             accuracy = (correct / (correct + wrong) * 100) if (correct + wrong) > 0 else 0
 
             if current_key not in st.session_state.attempt_history:
@@ -224,7 +246,7 @@ else:
                 "अटेम्प्ट (Attempt)": f"प्रयास #{attempt_num}",
                 "तारीख व समय": datetime.now().strftime("%d-%m-%Y %H:%M"),
                 "कुल प्रश्न": total,
-                "अंतिम स्कोर": f"{final_score:.2f} / {total}",
+                "अंतिम स्कोर": f"{final_score:.2f} / {max_marks:.0f}",
                 "सही उत्तर": correct,
                 "गलत उत्तर": wrong,
                 "छोड़े गए": unattempted,
