@@ -7,7 +7,7 @@ st.set_page_config(page_title="ALL SUBJECT TEST", page_icon="📝", layout="wide
 # एडमिन पासवर्ड
 ADMIN_PASSWORD = "NINI@123"
 
-# विषय और उनके सभी चैप्टर्स की लिस्ट (सिंटैक्स ठीक कर दिया गया है)
+# विषय और उनके सभी चैप्टर्स की लिस्ट
 SUBJECTS_DATA = {
     "🔢 Mathematics (गणित)": [
         "Percentage (प्रतिशत)", "Profit & Loss (लाभ और हानि)", "PARTNERSHIP", "Ratio & Proportion (अनुपात)",
@@ -89,34 +89,65 @@ with st.sidebar:
             st.session_state.is_admin = False
             st.rerun()
 
-    # एडमिन के लिए सवाल और इमेज अपलोड फॉर्म
+    # एडमिन के लिए सवाल, विकल्प और इमेज अपलोड फॉर्म
     if st.session_state.is_admin and st.session_state.selected_chapter is not None:
         st.divider()
         st.subheader("➕ नया सवाल जोड़ें")
         with st.form("manual_add_q", clear_on_submit=True):
-            q_text = st.text_area("प्रश्न दर्ज करें:")
-            op_a = st.text_input("विकल्प A:")
-            op_b = st.text_input("विकल्प B:")
-            op_c = st.text_input("विकल्प C:")
-            op_d = st.text_input("विकल्प D:")
+            st.markdown("**1. प्रश्न विवरण:**")
+            q_text = st.text_area("प्रश्न टेक्स्ट दर्ज करें (वैकल्पिक):")
+            q_img = st.file_uploader("प्रश्न की फोटो (Question Image):", type=["png", "jpg", "jpeg"], key="q_img_up")
+            
+            st.markdown("**2. विकल्प (टेक्स्ट या फोटो):**")
+            col_a1, col_a2 = st.columns(2)
+            with col_a1: op_a = st.text_input("विकल्प A टेक्स्ट:")
+            with col_a2: img_a = st.file_uploader("विकल्प A फोटो:", type=["png", "jpg", "jpeg"], key="img_a")
+            
+            col_b1, col_b2 = st.columns(2)
+            with col_b1: op_b = st.text_input("विकल्प B टेक्स्ट:")
+            with col_b2: img_b = st.file_uploader("विकल्प B फोटो:", type=["png", "jpg", "jpeg"], key="img_b")
+            
+            col_c1, col_c2 = st.columns(2)
+            with col_c1: op_c = st.text_input("विकल्प C टेक्स्ट:")
+            with col_c2: img_c = st.file_uploader("विकल्प C फोटो:", type=["png", "jpg", "jpeg"], key="img_c")
+            
+            col_d1, col_d2 = st.columns(2)
+            with col_d1: op_d = st.text_input("विकल्प D टेक्स्ट:")
+            with col_d2: img_d = st.file_uploader("विकल्प D फोटो:", type=["png", "jpg", "jpeg"], key="img_d")
+
             correct = st.selectbox("सही विकल्प चुनें:", ["A", "B", "C", "D"])
             
-            sol_img = st.file_uploader("सॉल्यूशन की फोटो अपलोड करें:", type=["png", "jpg", "jpeg"])
+            st.markdown("**3. सॉल्यूशन:**")
+            sol_img = st.file_uploader("सॉल्यूशन की व्याख्या फोटो:", type=["png", "jpg", "jpeg"], key="sol_img_up")
             
             save_btn = st.form_submit_button("सवाल सेव करें 💾")
-            if save_btn and q_text and op_a and op_b:
-                ops = {"A": op_a, "B": op_b, "C": op_c, "D": op_d}
-                new_q = {
-                    "question": q_text,
-                    "options": [op_a, op_b, op_c, op_d],
-                    "answer": ops[correct],
-                    "sol_image": sol_img.read() if sol_img else None
-                }
-                if current_key not in st.session_state.all_questions_db:
-                    st.session_state.all_questions_db[current_key] = []
-                st.session_state.all_questions_db[current_key].append(new_q)
-                st.success("सवाल टेस्ट में जुड़ गया!")
-                st.rerun()
+            if save_btn:
+                if not q_text and not q_img:
+                    st.error("कृपया प्रश्न का टेक्स्ट लिखें या प्रश्न की फोटो अपलोड करें!")
+                else:
+                    new_q = {
+                        "question_text": q_text if q_text else "नीचे दी गई फोटो को देखकर उत्तर दें:",
+                        "question_image": q_img.read() if q_img else None,
+                        "options_text": {
+                            "A": op_a if op_a else "विकल्प A (फोटो देखें)",
+                            "B": op_b if op_b else "विकल्प B (फोटो देखें)",
+                            "C": op_c if op_c else "विकल्प C (फोटो देखें)",
+                            "D": op_d if op_d else "विकल्प D (फोटो देखें)"
+                        },
+                        "options_image": {
+                            "A": img_a.read() if img_a else None,
+                            "B": img_b.read() if img_b else None,
+                            "C": img_c.read() if img_c else None,
+                            "D": img_d.read() if img_d else None
+                        },
+                        "answer": correct,
+                        "sol_image": sol_img.read() if sol_img else None
+                    }
+                    if current_key not in st.session_state.all_questions_db:
+                        st.session_state.all_questions_db[current_key] = []
+                    st.session_state.all_questions_db[current_key].append(new_q)
+                    st.success("सवाल टेस्ट में जुड़ गया!")
+                    st.rerun()
 
 
 # --- 1. मुख्य स्क्रीन: विषय चयन ---
@@ -166,12 +197,11 @@ else:
 
     st.divider()
 
-    # टेस्ट शुरू करने से पहले (अंक और नेगेटिव मार्किंग चयन)
+    # टेस्ट शुरू करने से पहले
     if not st.session_state.quiz_started and not st.session_state.submitted:
         st.write(f"**उपलब्ध प्रश्न:** {len(current_questions)}")
         
         opt_col1, opt_col2 = st.columns(2)
-        
         with opt_col1:
             marks_per_q = st.selectbox(
                 "प्रत्येक सही उत्तर के लिए अंक चुनें:",
@@ -188,7 +218,7 @@ else:
             )
             st.session_state.selected_neg = neg_val
 
-        # पिछले प्रयासों का रिकॉर्ड दिखाना
+        # पिछले प्रयासों का रिकॉर्ड
         past_attempts = st.session_state.attempt_history.get(current_key, [])
         if past_attempts:
             with st.expander(f"📜 आपके पिछले प्रयासों का रिकॉर्ड (कुल {len(past_attempts)} बार टेस्ट दिया)", expanded=True):
@@ -207,16 +237,33 @@ else:
         st.caption(f"नियम: सही उत्तर पर +{int(st.session_state.get('selected_marks', 1.0))} अंक | गलत उत्तर पर -{st.session_state.get('selected_neg', 0.0)} अंक")
         
         for idx, q in enumerate(current_questions):
-            st.markdown(f"#### Q{idx+1}. {q['question']}")
-            ans = st.radio("विकल्प चुनें:", q['options'], key=f"ans_{current_key}_{idx}", index=None)
-            st.session_state.user_answers[idx] = ans
+            st.markdown(f"#### Q{idx+1}. {q['question_text']}")
+            
+            # अगर प्रश्न की इमेज है
+            if q.get("question_image"):
+                st.image(q["question_image"], width=480)
+            
+            # ऑप्शंस की इमेज दिखाना (अगर कोई हो)
+            for opt_key in ["A", "B", "C", "D"]:
+                if q["options_image"].get(opt_key):
+                    st.caption(f"विकल्प {opt_key} की फोटो:")
+                    st.image(q["options_image"][opt_key], width=260)
+            
+            # रेडियो ऑप्शंस
+            radio_choices = [
+                f"A) {q['options_text']['A']}",
+                f"B) {q['options_text']['B']}",
+                f"C) {q['options_text']['C']}",
+                f"D) {q['options_text']['D']}"
+            ]
+            ans = st.radio("विकल्प चुनें:", radio_choices, key=f"ans_{current_key}_{idx}", index=None)
+            st.session_state.user_answers[idx] = ans[0] if ans else None
             st.write("---")
 
         if st.button("🏁 टेस्ट सबमिट करें (Submit Test)", type="primary"):
             st.session_state.submitted = True
             st.session_state.quiz_started = False
             
-            # स्कोर की गणना और हिस्ट्री सेव करना
             total = len(current_questions)
             correct = 0
             wrong = 0
@@ -258,7 +305,6 @@ else:
     elif st.session_state.submitted:
         st.header("📊 आपकी परफॉर्मेंस रिपोर्ट")
         
-        # इस प्रयास का डेटा
         current_attempt = st.session_state.attempt_history[current_key][-1]
 
         c1, c2, c3, c4, c5 = st.columns(5)
@@ -270,7 +316,6 @@ else:
 
         st.divider()
 
-        # री-अटेम्प्ट बटन
         col_btn1, col_btn2 = st.columns([1, 2])
         with col_btn1:
             if st.button("🔄 री-अटेम्प्ट टेस्ट (Re-attempt Test)", type="primary"):
@@ -279,21 +324,23 @@ else:
                 st.session_state.user_answers = {}
                 st.rerun()
 
-        # सभी पिछले प्रयासों की पूरी टेबल
-        with st.expander("📜 आपके सभी री-अटेम्प्ट्स का इतिहास देखें (Click to expand)", expanded=True):
+        with st.expander("📜 आपके सभी री-अटेम्प्ट्स का इतिहास देखें", expanded=True):
             df_history = pd.DataFrame(st.session_state.attempt_history[current_key])
             st.table(df_history)
 
         st.divider()
-        st.subheader("🔍 प्रश्नों का विस्तृत हल (Image Solutions)")
+        st.subheader("🔍 प्रश्नों का विस्तृत हल (Solutions)")
         for idx, q in enumerate(current_questions):
-            ans = st.session_state.user_answers.get(idx, "उत्तर नहीं दिया")
+            ans = st.session_state.user_answers.get(idx)
             is_correct = (ans == q['answer'])
 
-            with st.expander(f"प्रश्न {idx+1}: {'✅ सही' if is_correct else '❌ गलत/छोड़ा'} - {q['question'][:45]}..."):
-                st.write(f"**प्रश्न:** {q['question']}")
-                st.write(f"**आपका चयन:** {ans}")
-                st.write(f"**सही उत्तर:** :green[{q['answer']}]")
+            with st.expander(f"प्रश्न {idx+1}: {'✅ सही' if is_correct else '❌ गलत/छोड़ा'} - {q['question_text'][:45]}..."):
+                st.write(f"**प्रश्न:** {q['question_text']}")
+                if q.get("question_image"):
+                    st.image(q["question_image"], width=420)
+
+                st.write(f"**आपका चयन:** {ans if ans else 'उत्तर नहीं दिया'}")
+                st.write(f"**सही विकल्प:** :green[{q['answer']}]")
                 
                 if q.get('sol_image') is not None:
                     st.write("📸 **सॉल्यूशन फोटो:**")
