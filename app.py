@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="RWA Style Mock Portal", page_icon="📝", layout="wide")
+st.set_page_config(page_title="ALL SUBJECT TEXT", page_icon="📝", layout="wide")
 
 # एडमिन पासवर्ड
 ADMIN_PASSWORD = "NINI@123"
@@ -10,29 +10,30 @@ ADMIN_PASSWORD = "NINI@123"
 # विषय और उनके सभी चैप्टर्स की लिस्ट
 SUBJECTS_DATA = {
     "🔢 Mathematics (गणित)": [
-        "Percentage (प्रतिशत)", "Profit & Loss (लाभ और हानि)", "Ratio & Proportion (अनुपात)",
-        "Simple & Compound Interest", "Time & Work (कार्य और समय)", "Speed, Time & Distance",
-        "Number System (संख्या पद्धति)", "Average (औसत)", "Mensuration (क्षेत्रमिति)"
+        "Percentage (प्रतिशत)", "Profit & Loss (लाभ और हानि)", "PATNERSHIP", "Ratio & Proportion (अनुपात)",
+        "Simple & Compound Interest", "Time & Work (कार्य और समय)", "Speed, Time & Distance", "TRAIN", 
+        "Number System (संख्या पद्धति)", "Average (औसत)", "Mensuration 2D (क्षेत्रमिति 2D)", "MENSURATION 3D", "LCM & HCF", "SIMPLIFICATION", "AGE", "DISCOUNT", "DATA INTERPRETATION"
     ],
     "🧠 Reasoning (तर्कशक्ति)": [
-        "Coding-Decoding", "Analogy (सादृश्यता)", "Blood Relation (रक्त संबंध)",
-        "Direction & Distance", "Series (श्रृंखला)", "Syllogism (कथन व निष्कर्ष)", "Non-Verbal Reasoning"
+        "Coding-Decoding", "Analogy (सादृश्यता)", "Blood Relation (रक्त संबंध)", "Classification", "Logical Arrangement", "Inserting Missing Characters", "Clock & Calendar", "Sitting Arrangement ", "Rankings Text", "Venn Diagram",
+        "Mathematics Operation", "Statement and Conclusion", "Direction & Distance", "Series (श्रृंखला)", "Syllogism (कथन व निष्कर्ष)", "Non-Verbal Reasoning"
     ],
     "🌍 Indian Geography (भूगोल)": [
-        "भारत की नदियाँ एवं झीलें", "पर्वत एवं पठार", "जलवायु एवं मानसून", "कृषि एवं खनिज संसाधन", "राष्ट्रीय उद्यान एवं अभयारण्य"
+        "भारत की नदियाँ एवं झीलें", "पर्वत एवं पठार", "जलवायु एवं मानसून", "कृषि एवं खनिज संसाधन", "राष्ट्रीय उद्यान एवं अभयारण्य", "Other"
     ],
     "🏛️ Indian Polity (राजव्यवस्था)": [
-        "संविधान की प्रस्तावना व स्रोत", "मौलिक अधिकार एवं कर्तव्य", "राष्ट्रपति एवं संसद", "न्यायपालिका (Supreme Court)", "पंचायती राज व संशोधन"
+        "संविधान की प्रस्तावना व स्रोत", "मौलिक अधिकार एवं कर्तव्य", "राष्ट्रपति एवं संसद", "न्यायपालिका (Supreme Court)", "पंचायती राज व संशोधन","OTHER"
     ],
     "💡 General Science (सामान्य विज्ञान)": [
-        "Physics (भौतिक विज्ञान)", "Chemistry (रसायन विज्ञान)", "Biology (जीव विज्ञान)"
+        "Physics (भौतिक विज्ञान)", "Chemistry (रसायन विज्ञान)", "Biology (जीव विज्ञान)","
     ],
     "🏆 Static GK (स्टैटिक जीके)": [
-        "प्रमुख लोक नृत्य एवं त्यौहार", "महत्वपूर्ण दिवस एवं थीम", "खेलकूद एवं ट्रॉफियां", "भारत के प्रमुख मंदिर व स्मारक"
+        "प्रमुख लोक नृत्य एवं त्यौहार", "महत्वपूर्ण दिवस एवं थीम", "खेलकूद एवं ट्रॉफियां", "भारत के प्रमुख मंदिर व स्मारक","OTHER "
     ],
     "📖 सामान्य हिंदी": [
-        "संधि एवं समास", "विलोम एवं पर्यायवाची शब्द", "मुहावरे एवं लोकोक्तियां", "अनेक शब्दों के लिए एक शब्द", "वर्तनी एवं वाक्य शुद्धि"
+        "संधि एवं समास", "विलोम एवं पर्यायवाची शब्द", "मुहावरे एवं लोकोक्तियां", "अनेक शब्दों के लिए एक शब्द", "वर्तनी एवं वाक्य शुद्धि","OTHER"
     ]
+    "Economics": [ "ALL TOPICS " ]
 }
 
 # स्टेट मैनेजमेंट
@@ -111,7 +112,7 @@ with st.sidebar:
 
 # --- 1. मुख्य स्क्रीन: विषय चयन ---
 if st.session_state.selected_subject is None:
-    st.title("📚 रोजगार विद अंकित - टेस्ट सीरीज पोर्टल")
+    st.title("📚 - टेस्ट सीरीज पोर्टल")
     st.write("### अपना विषय चुनें (Select Subject):")
     st.write("---")
 
@@ -211,7 +212,7 @@ else:
                 else:
                     wrong += 1
 
-            final_score = (correct * 1.0) - (wrong * neg)
+            final_score = (correct * 2.0) - (wrong * neg)
             accuracy = (correct / (correct + wrong) * 100) if (correct + wrong) > 0 else 0
 
             if current_key not in st.session_state.attempt_history:
