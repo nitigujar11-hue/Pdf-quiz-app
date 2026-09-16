@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import time
+import io
+from PIL import Image
+from streamlit_cropper import st_cropper
 
 st.set_page_config(page_title="ALL SUBJECT TEST", page_icon="📝", layout="wide")
 
@@ -76,7 +79,27 @@ current_key = f"{st.session_state.selected_subject}_{st.session_state.selected_c
 current_questions = st.session_state.all_questions_db.get(current_key, [])
 
 
-# --- फंक्शन: टेस्ट सबमिट एवं रिजल्ट गणना ---
+# ==========================================
+# ⚡ ऑटो-कंप्रेसर फंक्शन (MB को KB में बदलने के लिए)
+# ==========================================
+def compress_and_convert_to_bytes(img, max_width=1000, quality=80):
+    """बड़ी फोटो को ऑटोमैटिक कंप्रेस करके कुछ KB में बदल देता है"""
+    # अगर इमेज RGBA मोड में है तो RGB में बदलें ताकि JPEG सेव हो सके
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+    
+    # अगर चौड़ाई 1000px से ज्यादा है तो रीसाइज करें
+    if img.width > max_width:
+        ratio = max_width / float(img.width)
+        new_height = int((float(img.height) * float(ratio)))
+        img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+    
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", optimize=True, quality=quality)
+    return buf.getvalue()
+
+
+# टेस्ट सबमिट एवं रिजल्ट गणना
 def calculate_and_submit_quiz(is_timeout=False):
     st.session_state.submitted = True
     st.session_state.quiz_started = False
@@ -141,12 +164,7 @@ with st.sidebar:
 
         st.divider()
 
-        # ==========================================
-        # 📁 मुख्य फोल्डर: Editing All
-        # ==========================================
         with st.expander("📁 Editing All (मास्टर कंट्रोल हब)", expanded=True):
-            st.info("यहाँ से आप विषय, चैप्टर और प्रश्न जोड़, बदल या हटा सकते हैं।")
-            
             tab_subj, tab_chap, tab_q = st.tabs(["📚 विषय", "📑 चैप्टर", "📝 प्रश्न"])
 
             # 1. विषय टैब
@@ -225,7 +243,7 @@ with st.sidebar:
                                 st.warning("चैप्टर हटा दिया गया!")
                                 st.rerun()
 
-            # 3. प्रश्न टैब
+            # 3. प्रश्न टैब (लाइव क्रॉपिंग और ऑटोमैटिक कंप्रेसर के साथ)
             with tab_q:
                 all_s = list(st.session_state.subjects_data.keys())
                 if all_s:
@@ -238,58 +256,67 @@ with st.sidebar:
 
                         st.caption(f"कुल उपलब्ध प्रश्न: {len(target_q_list)}")
 
-                        with st.expander("➕ नया सवाल जोड़ें", expanded=False):
-                            with st.form("hub_add_q_form", clear_on_submit=True):
-                                q_t = st.text_area("प्रश्न टेक्स्ट:")
-                                q_i = st.file_uploader("प्रश्न फोटो:", type=["png", "jpg", "jpeg"], key="h_qi")
+                        with st.expander("➕ नया सवाल जोड़ें (Crop & Compress सहित)", expanded=False):
+                            q_t = st.text_area("प्रश्न का टेक्स्ट:")
+                            
+                            # प्रश्न फोटो व क्रॉप
+                            q_i = st.file_uploader("प्रश्न फोटो अपलोड करें (MB ऑटोमैटिक KB में बदलेगी):", type=["png", "jpg", "jpeg"], key="h_qi")
+                            final_q_img = None
+                            if q_i:
+                                pil_img_q = Image.open(q_i)
+                                st.caption("✂️ नीचे बॉक्स को खींचकर मनचाहा हिस्सा क्रॉप करें:")
+                                cropped_q = st_cropper(pil_img_q, realtime_update=True, box_color='#00FF00', aspect_ratio=None, key="crop_q")
                                 
-                                c_a1, c_a2 = st.columns(2)
-                                with c_a1: op_a = st.text_input("A टेक्स्ट:")
-                                with c_a2: img_a = st.file_uploader("A फोटो:", type=["png", "jpg", "jpeg"], key="h_ia")
-                                
-                                c_b1, c_b2 = st.columns(2)
-                                with c_b1: op_b = st.text_input("B टेक्स्ट:")
-                                with c_b2: img_b = st.file_uploader("B फोटो:", type=["png", "jpg", "jpeg"], key="h_ib")
-                                
-                                c_c1, c_c2 = st.columns(2)
-                                with c_c1: op_c = st.text_input("C टेक्स्ट:")
-                                with c_c2: img_c = st.file_uploader("C फोटो:", type=["png", "jpg", "jpeg"], key="h_ic")
-                                
-                                c_d1, c_d2 = st.columns(2)
-                                with c_d1: op_d = st.text_input("D टेक्स्ट:")
-                                with c_d2: img_d = st.file_uploader("D फोटो:", type=["png", "jpg", "jpeg"], key="h_id")
+                                # ऑटोमैटिक कंप्रेस करके KB में बदलना
+                                final_q_img = compress_and_convert_to_bytes(cropped_q)
+                                st.success(f"⚡ फोटो कंप्रेस हो गई! साइज: {len(final_q_img)/1024:.1f} KB")
+                                st.image(final_q_img, caption="कंप्रेस प्रीव्यू", width=250)
 
-                                corr = st.selectbox("सही उत्तर:", ["A", "B", "C", "D"], key="h_corr")
-                                sol_i = st.file_uploader("सॉल्यूशन फोटो:", type=["png", "jpg", "jpeg"], key="h_sol")
-                                
-                                if st.form_submit_button("सवाल सेव करें 💾"):
-                                    if not q_t and not q_i:
-                                        st.error("प्रश्न का टेक्स्ट या फोटो दें!")
-                                    else:
-                                        new_item = {
-                                            "question_text": q_t if q_t else "नीचे दी गई फोटो को देखकर उत्तर दें:",
-                                            "question_image": q_i.read() if q_i else None,
-                                            "options_text": {
-                                                "A": op_a if op_a else "विकल्प A (फोटो देखें)",
-                                                "B": op_b if op_b else "विकल्प B (फोटो देखें)",
-                                                "C": op_c if op_c else "विकल्प C (फोटो देखें)",
-                                                "D": op_d if op_d else "विकल्प D (फोटो देखें)"
-                                            },
-                                            "options_image": {
-                                                "A": img_a.read() if img_a else None,
-                                                "B": img_b.read() if img_b else None,
-                                                "C": img_c.read() if img_c else None,
-                                                "D": img_d.read() if img_d else None
-                                            },
-                                            "answer": corr,
-                                            "sol_image": sol_i.read() if sol_i else None
-                                        }
-                                        if target_db_key not in st.session_state.all_questions_db:
-                                            st.session_state.all_questions_db[target_db_key] = []
-                                        st.session_state.all_questions_db[target_db_key].append(new_item)
-                                        st.success("सवाल जुड़ गया!")
-                                        st.rerun()
+                            st.write("---")
+                            st.markdown("**विकल्प विवरण (टेक्स्ट):**")
+                            op_a = st.text_input("विकल्प A टेक्स्ट:", key="h_ta")
+                            op_b = st.text_input("विकल्प B टेक्स्ट:", key="h_tb")
+                            op_c = st.text_input("विकल्प C टेक्स्ट:", key="h_tc")
+                            op_d = st.text_input("विकल्प D टेक्स्ट:", key="h_td")
 
+                            corr = st.selectbox("सही उत्तर चुनें:", ["A", "B", "C", "D"], key="h_corr")
+                            
+                            # सॉल्यूशन फोटो व क्रॉप
+                            st.write("---")
+                            sol_i = st.file_uploader("सॉल्यूशन फोटो (वैकल्पिक):", type=["png", "jpg", "jpeg"], key="h_sol")
+                            final_sol_img = None
+                            if sol_i:
+                                pil_img_s = Image.open(sol_i)
+                                st.caption("✂️ सॉल्यूशन का हिस्सा क्रॉप करें:")
+                                cropped_s = st_cropper(pil_img_s, realtime_update=True, box_color='#0000FF', aspect_ratio=None, key="crop_s")
+                                final_sol_img = compress_and_convert_to_bytes(cropped_s)
+                                st.success(f"⚡ सॉल्यूशन फोटो कंप्रेस हो गई! साइज: {len(final_sol_img)/1024:.1f} KB")
+                                st.image(final_sol_img, caption="सॉल्यूशन प्रीव्यू", width=250)
+
+                            if st.button("सवाल सेव करें 💾", key="h_save_q_btn"):
+                                if not q_t and not final_q_img:
+                                    st.error("कृपया प्रश्न का टेक्स्ट लिखें या फोटो दें!")
+                                else:
+                                    new_item = {
+                                        "question_text": q_t if q_t else "नीचे दी गई फोटो को देखकर उत्तर दें:",
+                                        "question_image": final_q_img,
+                                        "options_text": {
+                                            "A": op_a if op_a else "विकल्प A",
+                                            "B": op_b if op_b else "विकल्प B",
+                                            "C": op_c if op_c else "विकल्प C",
+                                            "D": op_d if op_d else "विकल्प D"
+                                        },
+                                        "options_image": {"A": None, "B": None, "C": None, "D": None},
+                                        "answer": corr,
+                                        "sol_image": final_sol_img
+                                    }
+                                    if target_db_key not in st.session_state.all_questions_db:
+                                        st.session_state.all_questions_db[target_db_key] = []
+                                    st.session_state.all_questions_db[target_db_key].append(new_item)
+                                    st.success("सफलतापूर्वक नया प्रश्न सेव हो गया!")
+                                    st.rerun()
+
+                        # Delete All
                         if target_q_list:
                             st.divider()
                             if st.button("⚠️ Delete All (इस चैप्टर के सभी प्रश्न हटाएं)", key="hub_del_all_btn", type="secondary"):
@@ -398,7 +425,7 @@ else:
                 st.session_state.start_time = time.time()
                 st.rerun()
 
-    # लाइव मॉक टेस्ट (काउंटडाउन टाइमर, प्रश्न क्रमांक और डायरेक्ट एडमिन एडिट/डिलीट)
+    # लाइव मॉक टेस्ट
     elif st.session_state.quiz_started and not st.session_state.submitted:
         if st.session_state.time_limit_seconds > 0:
             elapsed = time.time() - st.session_state.start_time
@@ -422,11 +449,6 @@ else:
             if q.get("question_image"):
                 st.image(q["question_image"], width=480)
             
-            for opt_key in ["A", "B", "C", "D"]:
-                if q["options_image"].get(opt_key):
-                    st.caption(f"विकल्प {opt_key} की फोटो:")
-                    st.image(q["options_image"][opt_key], width=260)
-            
             radio_choices = [
                 f"A) {q['options_text']['A']}",
                 f"B) {q['options_text']['B']}",
@@ -436,9 +458,7 @@ else:
             ans = st.radio(f"प्रश्न {idx+1} का उत्तर चुनें:", radio_choices, key=f"ans_{current_key}_{idx}", index=None)
             st.session_state.user_answers[idx] = ans[0] if ans else None
 
-            # ==========================================
-            # 🛠️ सीधे सवाल पर एडमिन एडिट और डिलीट कंट्रोल्स
-            # ==========================================
+            # सीधे सवाल पर एडमिन एडिट और डिलीट कंट्रोल्स
             if st.session_state.is_admin:
                 col_inline_ed, col_inline_del = st.columns([1, 1])
                 with col_inline_ed:
