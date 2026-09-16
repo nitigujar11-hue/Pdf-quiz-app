@@ -9,39 +9,78 @@ import streamlit.components.v1 as components
 from PIL import Image, ImageOps
 from streamlit_cropper import st_cropper
 
-st.set_page_config(page_title="ALL SUBJECT TEST - RWA Style", page_icon="📝", layout="wide")
+st.set_page_config(page_title="Free Weekly Test - Portal", page_icon="📝", layout="wide")
+
+# ==========================================
+# 🎨 RWA जैसी कस्टम थीम CSS (Video Matching UI)
+# ==========================================
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f4f6f9;
+    }
+    .test-card {
+        background: #ffffff;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-left: 4px solid #1E3A8A;
+    }
+    .test-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-left: 15px;
+        flex-grow: 1;
+    }
+    .icon-box {
+        background: #e2e8f0;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 🔐 डेटाबेस कॉन्फ़िगरेशन
 # ==========================================
 ADMIN_PASSWORD = "NINI@123"
-DB_FILE = "app_quiz_database_rwa.pkl"
+DB_FILE = "app_quiz_database_rwa_exact.pkl"
 
 DEFAULT_SUBJECTS = {
-    "🔢 Mathematics": [
+    "🔢 Mathematics (गणित)": [
         "Percentage", "Profit & Loss", "PARTNERSHIP", "Ratio & Proportion",
         "Simple & Compound Interest", "Time & Work", "Speed, Time & Distance", "TRAIN", 
         "Number System", "Average", "Mensuration 2D", "MENSURATION 3D", 
         "LCM & HCF", "SIMPLIFICATION", "AGE", "DISCOUNT", "DATA INTERPRETATION"
     ],
-    "🧠 Reasoning": [
+    "🧠 Reasoning (तर्कशक्ति)": [
         "Coding-Decoding", "Analogy", "Blood Relation", "Classification", 
         "Logical Arrangement", "Inserting Missing Characters", "Clock & Calendar", "Sitting Arrangement", 
         "Rankings Test", "Venn Diagram", "Mathematics Operation", "Statement and Conclusion", 
         "Direction & Distance", "Series", "Syllogism", "Non-Verbal Reasoning"
     ],
-    "🌍 Indian Geography": [
+    "🌍 Indian Geography (भूगोल)": [
         "भारत की नदियाँ एवं झीलें", "पर्वत एवं पठार", "जलवायु एवं मानसून", "कृषि एवं खनिज संसाधन", 
         "राष्ट्रीय उद्यान एवं अभयारण्य", "Other"
     ],
-    "🏛️ Indian Polity": [
+    "🏛️ Indian Polity (राजव्यवस्था)": [
         "संविधान की प्रस्तावना व स्रोत", "मौलिक अधिकार एवं कर्तव्य", "राष्ट्रपति एवं संसद", 
         "न्यायपालिका (Supreme Court)", "पंचायती राज व संशोधन", "OTHER"
     ],
-    "💡 General Science": [
+    "💡 General Science (सामान्य विज्ञान)": [
         "Physics", "Chemistry", "Biology", "OTHER"
     ],
-    "🏆 Static GK": [
+    "🏆 Static GK (स्टैटिक जीके)": [
         "प्रमुख लोक नृत्य एवं त्यौहार", "महत्वपूर्ण दिवस एवं थीम", "खेलकूद एवं ट्रॉफियां", 
         "भारत के प्रमुख मंदिर व स्मारक", "OTHER"
     ],
@@ -101,22 +140,11 @@ if "attempt_history" not in st.session_state:
     st.session_state.attempt_history = initial_data.get("attempts", {})
 
 # ==========================================
-# 🔐 लॉगिन / साइनअप / फॉरगॉट पासवर्ड स्क्रीन (RWA Auth Style)
+# 🔐 लॉगिन / साइनअप / फॉरगॉट पासवर्ड स्क्रीन
 # ==========================================
 if st.session_state.logged_in_user is None:
-    st.markdown("""
-        <style>
-        .auth-container {
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>🎯 ONLINE MOCK TEST PORTAL</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #64748b;'>अपनी तैयारी को बेहतर बनाएं और सफलता हासिल करें</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>📚 Free Weekly Test Portal</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #64748b;'>अपनी तैयारी को परखने के लिए लॉगिन करें</p>", unsafe_allow_html=True)
     st.write("")
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -124,7 +152,6 @@ if st.session_state.logged_in_user is None:
         tab_login, tab_admin, tab_signup, tab_forgot = st.tabs(["🔑 यूजर लॉगिन", "👨‍🏫 एडमिन लॉगिन", "📝 नया अकाउंट", "🔄 पासवर्ड रिकवर"])
 
         with tab_login:
-            st.write("### छात्र लॉगिन (User Login)")
             log_mob = st.text_input("मोबाइल नंबर (Mobile Number):", key="u_log_mob")
             log_pass = st.text_input("पासवर्ड (Password):", type="password", key="u_log_pass")
             
@@ -143,7 +170,6 @@ if st.session_state.logged_in_user is None:
                     st.error("मोबाइल नंबर रजिस्टर्ड नहीं है। कृपया नया अकाउंट बनाएं।")
 
         with tab_admin:
-            st.write("### एडमिन डायरेक्ट लॉगिन (Admin)")
             admin_pwd_input = st.text_input("एडमिन पासवर्ड दर्ज करें:", type="password", key="adm_direct_pass")
             
             if st.button("एडमिन रूप में प्रवेश करें 🔐", type="primary", use_container_width=True):
@@ -157,7 +183,6 @@ if st.session_state.logged_in_user is None:
                     st.error("गलत एडमिन पासवर्ड!")
 
         with tab_signup:
-            st.write("### नया छात्र रजिस्ट्रेशन")
             new_name = st.text_input("पूरा नाम:", key="sign_name")
             new_mob = st.text_input("मोबाइल नंबर:", key="sign_mob")
             new_pass = st.text_input("पासवर्ड बनाएं:", type="password", key="sign_pass")
@@ -169,15 +194,11 @@ if st.session_state.logged_in_user is None:
                 elif new_mob in st.session_state.users_db:
                     st.error("यह मोबाइल नंबर पहले से रजिस्टर्ड है।")
                 else:
-                    st.session_state.users_db[new_mob] = {
-                        "name": new_name,
-                        "password": new_pass
-                    }
+                    st.session_state.users_db[new_mob] = {"name": new_name, "password": new_pass}
                     save_permanent_data()
                     st.success("सफलतापूर्वक रजिस्ट्रेशन हो गया! अब 'यूजर लॉगिन' टैब से लॉगिन करें।")
 
         with tab_forgot:
-            st.write("### पासवर्ड रीसेट करें")
             f_mob = st.text_input("रजिस्टर्ड मोबाइल नंबर:", key="f_mob")
             f_new_pass = st.text_input("नया पासवर्ड:", type="password", key="f_new_pass")
             
@@ -199,7 +220,7 @@ current_user = st.session_state.logged_in_user
 is_admin_user = (st.session_state.user_role == "admin")
 
 # ==========================================
-# ⚡ ऑटो-कंप्रेसर फंक्शन (500 Error Fix)
+# ⚡ ऑटो-कंप्रेसर फंक्शन
 # ==========================================
 def compress_and_convert_to_bytes(img, max_width=900, quality=75):
     try:
@@ -217,7 +238,7 @@ def compress_and_convert_to_bytes(img, max_width=900, quality=75):
     return buf.getvalue()
 
 # ==========================================
-# 📊 टेस्ट सबमिट एवं स्कोर गणना
+# 📊 स्कोर गणना
 # ==========================================
 def calculate_and_submit_quiz(is_timeout=False):
     st.session_state.submitted = True
@@ -291,7 +312,7 @@ with st.sidebar:
             else:
                 st.caption("कोई छात्र नहीं है।")
 
-# राज्य चर (State Variables)
+# स्टेट वेरिएबल्स
 if "selected_subject" not in st.session_state:
     st.session_state.selected_subject = None
 if "selected_chapter" not in st.session_state:
@@ -310,36 +331,41 @@ if "time_limit_seconds" not in st.session_state:
     st.session_state.time_limit_seconds = 0
 
 # ==========================================
-# 📲 टॉप हेडर: फुल मॉक आइकॉन (टॉप मिडिल) एवं शेयर बटन
+# 📲 टॉप हेडर: 'Free Weekly Test' हेडर + फुल मॉक बटन + शेयर आइकॉन (जैसे वीडियो में है)
 # ==========================================
-col_h1, col_h2, col_h3 = st.columns([1, 2, 1])
-with col_h2:
-    if st.button("🏆 Full Mock Test (फुल मॉक)", use_container_width=True, type="primary"):
+top_c1, top_c2, top_c3 = st.columns([2, 2, 1])
+with top_c1:
+    st.markdown("<h3 style='color: #1E3A8A; margin: 0;'>⬅ Free Weekly Test</h3>", unsafe_allow_html=True)
+with top_c2:
+    if st.button("🏆 Full Mock Test", use_container_width=True, type="primary"):
         st.session_state.is_full_mock_mode = True
         st.session_state.selected_subject = None
         st.session_state.selected_chapter = None
         st.session_state.quiz_started = False
         st.session_state.submitted = False
         st.rerun()
-
-with col_h3:
+with top_c3:
     components.html("""
     <div style="text-align: right; margin-top: 5px;">
-        <button id="shareBtn" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; border: none; padding: 6px 12px; font-size: 13px; font-weight: bold; border-radius: 15px; cursor: pointer;">📲 शेयर</button>
+        <button id="shareBtn" style="background: transparent; border: none; font-size: 20px; cursor: pointer;" title="Share">🔗</button>
     </div>
     <script>
     document.getElementById('shareBtn').addEventListener('click', async () => {
-        if (navigator.share) { try { await navigator.share({title: 'ALL SUBJECT TEST', url: window.location.href}); } catch(e){} }
+        if (navigator.share) { try { await navigator.share({title: 'Free Weekly Test', url: window.location.href}); } catch(e){} }
         else { navigator.clipboard.writeText(window.location.href); alert('लिंक कॉपी हो गया!'); }
     });
     </script>
     """, height=40)
 
+st.write("---")
+
 # ==========================================
 # 🏆 1. फुल मॉक टेस्ट स्क्रीन
 # ==========================================
 if st.session_state.is_full_mock_mode:
-    st.button("⬅ वापस डैशबोर्ड पर जाएं", on_click=lambda: st.session_state.update({"is_full_mock_mode": False}))
+    if st.button("⬅ वापस जाएं"):
+        st.session_state.is_full_mock_mode = False
+        st.rerun()
     st.title("🏆 Full Length Mock Test")
     st.write("---")
 
@@ -386,7 +412,6 @@ if st.session_state.is_full_mock_mode:
 
     if not st.session_state.quiz_started and not st.session_state.submitted:
         st.write(f"**कुल उपलब्ध फुल मॉक प्रश्न:** {len(full_mock_questions)}")
-        
         c_m1, c_m2 = st.columns(2)
         with c_m1:
             st.session_state.selected_marks = st.selectbox("अंक प्रति प्रश्न:", [1.0, 2.0, 4.0], key="fm_marks")
@@ -401,7 +426,7 @@ if st.session_state.is_full_mock_mode:
                 st.session_state.user_answers = {}
                 st.rerun()
         else:
-            st.warning("फिलहाल कोई फुल मॉक प्रश्न उपलब्ध नहीं हैं। (एडमिन द्वारा जोड़े जाने बाकी हैं)")
+            st.warning("फिलहाल कोई फुल मॉक प्रश्न उपलब्ध नहीं हैं।")
 
     elif st.session_state.quiz_started and not st.session_state.submitted:
         if st.session_state.time_limit_seconds > 0:
@@ -439,24 +464,31 @@ if st.session_state.is_full_mock_mode:
             st.rerun()
 
 # ==========================================
-# 🎯 2. मुख्य विषय एवं चैप्टर ग्रिड (RWA App Style Interface)
+# 🎯 2. RWA जैसी लिस्ट स्टाइल (Video Matching Layout)
 # ==========================================
 elif st.session_state.selected_subject is None:
-    st.markdown("### 📚 विषय सूची (Subjects)")
-    st.caption("नीचे दिए गए किसी भी विषय पर क्लिक करके अपने चैप्टर्स व मॉक टेस्ट एक्सेस करें:")
-
-    all_active_subjects = list(st.session_state.subjects_data.keys())
-    cols = st.columns(3)
+    st.markdown("### 📚 विषय एवं वीकली टेस्ट लिस्ट (Subjects)")
     
+    all_active_subjects = list(st.session_state.subjects_data.keys())
+    
+    # वीडियो जैसी कार्ड लिस्ट तैयार करना
     for index, subj in enumerate(all_active_subjects):
-        with cols[index % 3]:
-            with st.container(border=True):
-                st.markdown(f"<h4 style='text-align: center; color: #1E3A8A;'>{subj}</h4>", unsafe_allow_html=True)
-                chaps = st.session_state.subjects_data.get(subj, [])
-                st.caption(f"📑 कुल अध्याय: {len(chaps)}")
-                if st.button(f"क्लिक करें ➔", key=f"subj_btn_{index}", use_container_width=True, type="primary"):
-                    st.session_state.selected_subject = subj
-                    st.rerun()
+        chaps = st.session_state.subjects_data.get(subj, [])
+        
+        # HTML/Markdown से बिल्कुल वीडियो जैसी लिस्ट रो बनाना
+        st.markdown(f"""
+            <div class="test-card">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-box">📄</div>
+                    <div class="test-title">{subj} <br><span style="font-size: 12px; font-weight: normal; color: #64748b;">कुल अध्याय: {len(chaps)}</span></div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button(f"ओपन करें ➔", key=f"subj_btn_{index}", use_container_width=True):
+            st.session_state.selected_subject = subj
+            st.rerun()
+        st.write("")
 
     if is_admin_user:
         st.write("---")
@@ -473,18 +505,23 @@ elif st.session_state.selected_subject is None:
 elif st.session_state.selected_chapter is None:
     st.button("⬅ विषयों की सूची पर जाएं", on_click=lambda: st.session_state.update({"selected_subject": None}))
     st.title(f"📁 {st.session_state.selected_subject}")
-    st.write("### चैप्टर चुनें:")
+    st.write("### चैप्टर सूची:")
     st.write("---")
 
     chapters = st.session_state.subjects_data.get(st.session_state.selected_subject, [])
-    cols = st.columns(2)
     for index, chap in enumerate(chapters):
-        with cols[index % 2]:
-            with st.container(border=True):
-                st.write(f"📑 **{chap}**")
-                if st.button("मॉक टेस्ट लगाएं ✍️", key=f"chap_click_{index}", use_container_width=True):
-                    st.session_state.selected_chapter = chap
-                    st.rerun()
+        st.markdown(f"""
+            <div class="test-card">
+                <div style="display: flex; align-items: center;">
+                    <div class="icon-box">📑</div>
+                    <div class="test-title">{chap}</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("टेस्ट लगाएं ✍️", key=f"chap_click_{index}", use_container_width=True):
+            st.session_state.selected_chapter = chap
+            st.rerun()
+        st.write("")
 
     if is_admin_user:
         st.write("---")
@@ -508,7 +545,6 @@ else:
     current_questions = st.session_state.all_questions_db.get(current_test_key, [])
     st.session_state.active_questions_list = current_questions
 
-    # एडमिन के लिए प्रश्न जोड़ने का ऑप्शन (सेव होते ही फॉर्म खाली और तुरंत नया जोड़ने का विकल्प)
     if is_admin_user:
         with st.expander("➕ इस चैप्टर में नया प्रश्न जोड़ें (एडमिन)", expanded=False):
             with st.form(key=f"chapter_add_q_form_{len(current_questions)}"):
@@ -567,7 +603,7 @@ else:
                 st.session_state.user_answers = {}
                 st.rerun()
         else:
-            st.warning("इस चैप्टर में अभी कोई प्रश्न नहीं जोड़े गए हैं। (एडमिन द्वारा जोड़े जाने बाकी हैं)")
+            st.warning("इस चैप्टर में अभी कोई प्रश्न नहीं जोड़े गए हैं।")
 
     elif st.session_state.quiz_started and not st.session_state.submitted:
         if st.session_state.time_limit_seconds > 0:
