@@ -5,18 +5,18 @@ import time
 import io
 import os
 import pickle
+import streamlit.components.v1 as components
 from PIL import Image
 from streamlit_cropper import st_cropper
 
 st.set_page_config(page_title="ALL SUBJECT TEST", page_icon="📝", layout="wide")
 
-# एडमिन पासवर्ड
+# ==========================================
+# 🔐 एडमिन पासवर्ड एवं डेटाबेस कॉन्फ़िगरेशन
+# ==========================================
 ADMIN_PASSWORD = "NINI@123"
-
-# सर्वर पर परमानेंट डेटाबेस फाइल का नाम
 DB_FILE = "app_quiz_database.pkl"
 
-# डिफ़ॉल्ट विषय और चैप्टर्स का डेटा
 DEFAULT_SUBJECTS = {
     "🔢 Mathematics (गणित)": [
         "Percentage (प्रतिशत)", "Profit & Loss (लाभ और हानि)", "PARTNERSHIP", "Ratio & Proportion (अनुपात)",
@@ -55,7 +55,7 @@ DEFAULT_SUBJECTS = {
 }
 
 # ==========================================
-# 💾 2-WAY SYNC: परमानेंट डेटाबेस लोड एवं सेव फंक्शन
+# 💾 2-WAY SYNC: डेटाबेस लोड एवं सेव फंक्शन
 # ==========================================
 def load_permanent_data():
     if os.path.exists(DB_FILE):
@@ -75,9 +75,10 @@ def save_permanent_data():
     with open(DB_FILE, "wb") as f:
         pickle.dump(payload, f)
 
-# डेटा लोड करें
 initial_data = load_permanent_data()
 
+if "is_admin" not in st.session_state:
+    st.session_state.is_admin = False
 if "subjects_data" not in st.session_state:
     st.session_state.subjects_data = initial_data.get("subjects", DEFAULT_SUBJECTS)
 if "all_questions_db" not in st.session_state:
@@ -86,7 +87,29 @@ if "attempt_history" not in st.session_state:
     st.session_state.attempt_history = initial_data.get("attempts", {})
 
 # ==========================================
-# 🚀 100% ऑटोमैटिक ऐप वर्ज़न चेकर (App ↔ Web Sync)
+# 👁️ टॉप-राइट कॉर्नर आइकन्स का नियंत्रण
+# ==========================================
+if not st.session_state.is_admin:
+    st.markdown("""
+        <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display:none;}
+        div[data-testid="stToolbar"] {visibility: hidden; display: none !important;}
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <style>
+        #MainMenu {visibility: visible;}
+        header {visibility: visible;}
+        div[data-testid="stToolbar"] {visibility: visible !important;}
+        </style>
+    """, unsafe_allow_html=True)
+
+# ==========================================
+# 🚀 ऑटो-वर्ज़न चेकर
 # ==========================================
 def get_dynamic_version():
     try:
@@ -102,7 +125,6 @@ CURRENT_SYSTEM_VERSION = get_dynamic_version()
 if "client_app_version" not in st.session_state:
     st.session_state.client_app_version = CURRENT_SYSTEM_VERSION
 
-# ऑटो-अपडेट पॉप-अप विंडो
 if st.session_state.client_app_version != CURRENT_SYSTEM_VERSION:
     with st.container(border=True):
         st.warning("🔔 **नया अपडेट उपलब्ध है!** ऐप/वेबसाइट में नए प्रश्न या बदलाव जोड़े गए हैं।")
@@ -127,8 +149,6 @@ if "submitted" not in st.session_state:
     st.session_state.submitted = False
 if "user_answers" not in st.session_state:
     st.session_state.user_answers = {}
-if "is_admin" not in st.session_state:
-    st.session_state.is_admin = False
 if "start_time" not in st.session_state:
     st.session_state.start_time = None
 if "time_limit_seconds" not in st.session_state:
@@ -138,7 +158,7 @@ current_key = f"{st.session_state.selected_subject}_{st.session_state.selected_c
 current_questions = st.session_state.all_questions_db.get(current_key, [])
 
 # ==========================================
-# ⚡ ऑटो-कंप्रेसर फंक्शन (MB को KB में बदलने के लिए)
+# ⚡ ऑटो-कंप्रेसर फंक्शन
 # ==========================================
 def compress_and_convert_to_bytes(img, max_width=1000, quality=80):
     if img.mode in ("RGBA", "P"):
@@ -151,7 +171,6 @@ def compress_and_convert_to_bytes(img, max_width=1000, quality=80):
     img.save(buf, format="JPEG", optimize=True, quality=quality)
     return buf.getvalue()
 
-# टेस्ट सबमिट एवं रिजल्ट गणना
 def calculate_and_submit_quiz(is_timeout=False):
     st.session_state.submitted = True
     st.session_state.quiz_started = False
@@ -220,7 +239,6 @@ with st.sidebar:
         with st.expander("📁 Editing All (मास्टर कंट्रोल हब)", expanded=True):
             tab_subj, tab_chap, tab_q = st.tabs(["📚 विषय", "📑 चैप्टर", "📝 प्रश्न"])
 
-            # 1. विषय टैब
             with tab_subj:
                 st.markdown("**नया विषय जोड़ें:**")
                 new_s_name = st.text_input("विषय का नाम:", key="hub_new_subj")
@@ -260,7 +278,6 @@ with st.sidebar:
                             st.warning("विषय हटा दिया गया!")
                             st.rerun()
 
-            # 2. चैप्टर टैब
             with tab_chap:
                 all_s = list(st.session_state.subjects_data.keys())
                 if all_s:
@@ -302,7 +319,6 @@ with st.sidebar:
                                 st.warning("चैप्टर हटा दिया गया!")
                                 st.rerun()
 
-            # 3. प्रश्न टैब
             with tab_q:
                 all_s = list(st.session_state.subjects_data.keys())
                 if all_s:
@@ -403,27 +419,132 @@ with st.sidebar:
                     else:
                         st.caption("इस विषय में कोई चैप्टर नहीं है।")
 
-# --- 1. मुख्य स्क्रीन: विषय चयन ---
-if st.session_state.selected_subject is None:
-    st.title("📚 - टेस्ट सीरीज पोर्टल")
-    st.write("### अपना विषय चुनें (Select Subject):")
-    st.write("---")
+# ==========================================
+# 📲 टॉप हेडर: शेयर बटन कंपोनेंट
+# ==========================================
+col_h_left, col_h_right = st.columns([3, 1])
+with col_h_right:
+    components.html("""
+    <div style="text-align: right; margin-bottom: 5px;">
+        <button id="shareBtn" style="
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        ">
+            📲 शेयर करें
+        </button>
+    </div>
+    <script>
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+        const shareData = {
+            title: 'ALL SUBJECT TEST PORTAL',
+            text: 'ऑनलाइन मॉक टेस्ट दें और अपनी तैयारी परखें! यहाँ क्लिक करें:',
+            url: window.location.href
+        };
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {}
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+            alert('लिंक कॉपी हो गया है! अब आप इसे WhatsApp पर भेज सकते हैं।');
+        }
+    });
+    </script>
+    """, height=45)
 
+
+# ==============================================================================
+# 🎯 1. मुख्य स्क्रीन: प्रीमियम एग्जाम डैशबोर्ड (Professional UI)
+# ==============================================================================
+if st.session_state.selected_subject is None:
+    # डैशबोर्ड कस्टम स्टाइलिंग
+    st.markdown("""
+        <style>
+        .hero-banner {
+            background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+            padding: 24px;
+            border-radius: 16px;
+            color: white;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2);
+        }
+        .hero-title {
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+        .hero-sub {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .stat-card {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # हीरो सेक्शन (बैनर)
+    st.markdown("""
+        <div class="hero-banner">
+            <div class="hero-title">🎯 परीक्षा तैयारी पोर्टल (Exam Prep Hub)</div>
+            <div class="hero-sub">अपनी तैयारी को परखें, अध्यायवार टेस्ट दें और रियल-टाइम परफॉर्मेंस ट्रैक करें।</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # लाइव स्टैट्स मीटर (Dashboard Quick Stats)
     all_active_subjects = list(st.session_state.subjects_data.keys())
+    total_subjects_count = len(all_active_subjects)
+    total_chapters_count = sum(len(v) for v in st.session_state.subjects_data.values())
+    total_questions_count = sum(len(v) for v in st.session_state.all_questions_db.values())
+    total_attempts_count = sum(len(v) for v in st.session_state.attempt_history.values())
+
+    s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+    with s_col1:
+        st.container(border=True).metric("📚 कुल विषय", f"{total_subjects_count}")
+    with s_col2:
+        st.container(border=True).metric("📑 कुल चैप्टर्स", f"{total_chapters_count}")
+    with s_col3:
+        st.container(border=True).metric("📝 उपलब्ध प्रश्न", f"{total_questions_count}")
+    with s_col4:
+        st.container(border=True).metric("🏆 आपके टेस्ट प्रयास", f"{total_attempts_count}")
+
+    st.write("")
+    st.markdown("### 📖 अपने विषय का चयन करें")
+    st.caption("नीचे दिए गए किसी भी विषय पर क्लिक करके अभ्यास शुरू करें:")
+
     if not all_active_subjects:
         st.warning("अभी कोई विषय उपलब्ध नहीं है। कृपया एडमिन साइडबार से नए विषय जोड़ें।")
     else:
+        # कार्ड ग्रिड व्यू
         cols = st.columns(3)
         for index, subj in enumerate(all_active_subjects):
             with cols[index % 3]:
-                st.container(border=True).subheader(subj)
-                if st.button("ओपन करें ➔", key=f"subj_{index}", use_container_width=True):
-                    st.session_state.selected_subject = subj
-                    st.rerun()
+                with st.container(border=True):
+                    chaps = st.session_state.subjects_data.get(subj, [])
+                    st.subheader(subj)
+                    st.caption(f"📑 उपलब्ध अध्याय: **{len(chaps)}**")
+                    if st.button("अभ्यास शुरू करें ➔", key=f"subj_{index}", use_container_width=True, type="primary"):
+                        st.session_state.selected_subject = subj
+                        st.rerun()
+
 
 # --- 2. मुख्य स्क्रीन: अध्याय चयन ---
 elif st.session_state.selected_chapter is None:
-    st.button("⬅ वापस सभी विषय पर जाएं", on_click=lambda: st.session_state.update({"selected_subject": None}))
+    st.button("⬅ वापस डैशबोर्ड पर जाएं", on_click=lambda: st.session_state.update({"selected_subject": None}))
     st.title(f"{st.session_state.selected_subject}")
     st.write("### अपना चैप्टर चुनें (Select Chapter):")
     st.write("---")
@@ -440,6 +561,7 @@ elif st.session_state.selected_chapter is None:
                     st.session_state.selected_chapter = chap
                     st.rerun()
 
+
 # --- 3. मुख्य स्क्रीन: मॉक टेस्ट व रिजल्ट ---
 else:
     col_back, col_title = st.columns([1, 4])
@@ -455,7 +577,6 @@ else:
 
     st.divider()
 
-    # टेस्ट शुरू करने से पहले की सेटिंग्स
     if not st.session_state.quiz_started and not st.session_state.submitted:
         st.write(f"**उपलब्ध प्रश्न:** {len(current_questions)}")
         
@@ -498,7 +619,6 @@ else:
                 st.session_state.start_time = time.time()
                 st.rerun()
 
-    # लाइव मॉक टेस्ट
     elif st.session_state.quiz_started and not st.session_state.submitted:
         if st.session_state.time_limit_seconds > 0:
             elapsed = time.time() - st.session_state.start_time
@@ -539,7 +659,6 @@ else:
             ans = st.radio(f"प्रश्न {idx+1} का उत्तर चुनें:", radio_choices, key=f"ans_{current_key}_{idx}", index=None)
             st.session_state.user_answers[idx] = ans[0] if ans else None
 
-            # सीधे प्रश्न पर एडमिन एडिट / डिलीट कंट्रोल्स
             if st.session_state.is_admin:
                 col_inline_ed, col_inline_del = st.columns([1, 1])
                 with col_inline_ed:
@@ -563,7 +682,7 @@ else:
                                 }
                                 st.session_state.all_questions_db[current_key][idx]["answer"] = q_edit_ans
                                 save_permanent_data()
-                                st.success(f"प्रश्न {idx+1} अपडेट व सिंक कर दिया गया!")
+                                st.success(f"प्रश्न {idx+1} तुरंत अपडेट व सिंक हो गया!")
                                 st.rerun()
 
                 with col_inline_del:
@@ -579,7 +698,6 @@ else:
             calculate_and_submit_quiz(is_timeout=False)
             st.rerun()
 
-    # रिजल्ट और सॉल्यूशन स्क्रीन
     elif st.session_state.submitted:
         st.header("📊 आपकी परफॉर्मेंस रिपोर्ट")
         
