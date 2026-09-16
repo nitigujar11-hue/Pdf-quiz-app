@@ -9,13 +9,13 @@ import streamlit.components.v1 as components
 from PIL import Image, ImageOps
 from streamlit_cropper import st_cropper
 
-st.set_page_config(page_title="ALL SUBJECT TEST", page_icon="📝", layout="wide")
+st.set_page_config(page_title="ALL SUBJECT TEST - RWA Style", page_icon="📝", layout="wide")
 
 # ==========================================
 # 🔐 डेटाबेस कॉन्फ़िगरेशन
 # ==========================================
 ADMIN_PASSWORD = "NINI@123"
-DB_FILE = "app_quiz_database_v3.pkl"
+DB_FILE = "app_quiz_database_rwa.pkl"
 
 DEFAULT_SUBJECTS = {
     "🔢 Mathematics": [
@@ -88,9 +88,9 @@ initial_data = load_permanent_data()
 if "users_db" not in st.session_state:
     st.session_state.users_db = initial_data.get("users", {})
 if "logged_in_user" not in st.session_state:
-    st.session_state.logged_in_user = None  # None, "ADMIN", or mobile_number
+    st.session_state.logged_in_user = None
 if "user_role" not in st.session_state:
-    st.session_state.user_role = None  # "admin" or "user"
+    st.session_state.user_role = None
 if "subjects_data" not in st.session_state:
     st.session_state.subjects_data = initial_data.get("subjects", DEFAULT_SUBJECTS)
 if "all_questions_db" not in st.session_state:
@@ -101,60 +101,71 @@ if "attempt_history" not in st.session_state:
     st.session_state.attempt_history = initial_data.get("attempts", {})
 
 # ==========================================
-# 🔐 लॉगिन / साइनअप / फॉरगॉट पासवर्ड स्क्रीन
+# 🔐 लॉगिन / साइनअप / फॉरगॉट पासवर्ड स्क्रीन (RWA Auth Style)
 # ==========================================
 if st.session_state.logged_in_user is None:
-    st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>📚 ALL SUBJECT TEST PORTAL</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #64748b;'>अपनी तैयारी को परखें और सफलता सुनिश्चित करें</p>", unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        .auth-container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>🎯 ONLINE MOCK TEST PORTAL</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #64748b;'>अपनी तैयारी को बेहतर बनाएं और सफलता हासिल करें</p>", unsafe_allow_html=True)
     st.write("")
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        tab_login, tab_admin, tab_signup, tab_forgot = st.tabs(["🔑 यूजर लॉगिन", "👨‍🏫 एडमिन लॉगिन", "📝 नया अकाउंट", "🔄 पासवर्ड भूल गए"])
+        tab_login, tab_admin, tab_signup, tab_forgot = st.tabs(["🔑 यूजर लॉगिन", "👨‍🏫 एडमिन लॉगिन", "📝 नया अकाउंट", "🔄 पासवर्ड रिकवर"])
 
         with tab_login:
             st.write("### छात्र लॉगिन (User Login)")
             log_mob = st.text_input("मोबाइल नंबर (Mobile Number):", key="u_log_mob")
             log_pass = st.text_input("पासवर्ड (Password):", type="password", key="u_log_pass")
             
-            if st.button("यूजर लॉगिन करें 🚀", type="primary", use_container_width=True):
+            if st.button("लॉगिन करें 🚀", type="primary", use_container_width=True):
                 log_mob = log_mob.strip()
                 if log_mob in st.session_state.users_db:
                     if st.session_state.users_db[log_mob]["password"] == log_pass:
                         st.session_state.logged_in_user = log_mob
                         st.session_state.user_role = "user"
                         st.success("सफलतापूर्वक लॉगिन हो गया!")
-                        time.sleep(0.5)
+                        time.sleep(0.4)
                         st.rerun()
                     else:
                         st.error("गलत पासवर्ड!")
                 else:
-                    st.error("यह मोबाइल नंबर रजिस्टर्ड नहीं है। कृपया नया अकाउंट बनाएं।")
+                    st.error("मोबाइल नंबर रजिस्टर्ड नहीं है। कृपया नया अकाउंट बनाएं।")
 
         with tab_admin:
-            st.write("### एडमिन डायरेक्ट लॉगिन (Admin Direct)")
+            st.write("### एडमिन डायरेक्ट लॉगिन (Admin)")
             admin_pwd_input = st.text_input("एडमिन पासवर्ड दर्ज करें:", type="password", key="adm_direct_pass")
             
-            if st.button("एडमिन मोड में प्रवेश करें 🔐", type="primary", use_container_width=True):
+            if st.button("एडमिन रूप में प्रवेश करें 🔐", type="primary", use_container_width=True):
                 if admin_pwd_input == ADMIN_PASSWORD:
                     st.session_state.logged_in_user = "ADMIN"
                     st.session_state.user_role = "admin"
-                    st.success("एडमिन लॉगिन सफल!")
-                    time.sleep(0.5)
+                    st.success("एडमिन मोड सक्रिय!")
+                    time.sleep(0.4)
                     st.rerun()
                 else:
                     st.error("गलत एडमिन पासवर्ड!")
 
         with tab_signup:
-            st.write("### नया यूजर रजिस्ट्रेशन")
+            st.write("### नया छात्र रजिस्ट्रेशन")
             new_name = st.text_input("पूरा नाम:", key="sign_name")
             new_mob = st.text_input("मोबाइल नंबर:", key="sign_mob")
             new_pass = st.text_input("पासवर्ड बनाएं:", type="password", key="sign_pass")
             
-            if st.button("अकाउंट बनाएं ➔", type="primary", use_container_width=True):
+            if st.button("रजिस्टर करें ➔", type="primary", use_container_width=True):
                 new_mob = new_mob.strip()
                 if not new_name or not new_mob or not new_pass:
-                    st.warning("कृपया सभी जानकारी भरें!")
+                    st.warning("सभी विवरण भरना अनिवार्य है!")
                 elif new_mob in st.session_state.users_db:
                     st.error("यह मोबाइल नंबर पहले से रजिस्टर्ड है।")
                 else:
@@ -163,21 +174,21 @@ if st.session_state.logged_in_user is None:
                         "password": new_pass
                     }
                     save_permanent_data()
-                    st.success("अकाउंट बन गया! अब 'यूजर लॉगिन' टैब से लॉगिन करें।")
+                    st.success("सफलतापूर्वक रजिस्ट्रेशन हो गया! अब 'यूजर लॉगिन' टैब से लॉगिन करें।")
 
         with tab_forgot:
             st.write("### पासवर्ड रीसेट करें")
             f_mob = st.text_input("रजिस्टर्ड मोबाइल नंबर:", key="f_mob")
             f_new_pass = st.text_input("नया पासवर्ड:", type="password", key="f_new_pass")
             
-            if st.button("पासवर्ड बदलें 🔄", use_container_width=True):
+            if st.button("पासवर्ड अपडेट करें 🔄", use_container_width=True):
                 f_mob = f_mob.strip()
                 if f_mob in st.session_state.users_db:
                     st.session_state.users_db[f_mob]["password"] = f_new_pass
                     save_permanent_data()
-                    st.success("पासवर्ड अपडेट हो गया!")
+                    st.success("पासवर्ड बदल गया है!")
                 else:
-                    st.error("मोबाइल नंबर नहीं मिला।")
+                    st.error("मोबाइल नंबर डेटाबेस में नहीं मिला।")
     
     st.stop()
 
@@ -206,7 +217,7 @@ def compress_and_convert_to_bytes(img, max_width=900, quality=75):
     return buf.getvalue()
 
 # ==========================================
-# 📊 टेस्ट सबमिट एवं व्यक्तिगत स्कोर गणना
+# 📊 टेस्ट सबमिट एवं स्कोर गणना
 # ==========================================
 def calculate_and_submit_quiz(is_timeout=False):
     st.session_state.submitted = True
@@ -255,11 +266,11 @@ def calculate_and_submit_quiz(is_timeout=False):
     })
     save_permanent_data()
 
-# --- साइडबार ---
+# --- साइडबार पैनल ---
 with st.sidebar:
-    st.title("👤 पैनल नियंत्रण")
+    st.title("👤 यूजर अकाउंट")
     if is_admin_user:
-        st.success("👨‍🏫 एडमिन मोड (Admin)")
+        st.success("👨‍🏫 एडमिन मोड (Master)")
     else:
         user_info = st.session_state.users_db.get(current_user, {})
         st.write(f"**नाम:** {user_info.get('name', 'User')}")
@@ -272,15 +283,15 @@ with st.sidebar:
 
     if is_admin_user:
         st.divider()
-        st.subheader("🛠️ एडमिन टूल्स")
-        with st.expander("👥 सभी रजिस्टर्ड छात्र देखें"):
+        st.subheader("🛠️ एडमिन कंट्रोल्स")
+        with st.expander("👥 सभी रजिस्टर्ड छात्र"):
             if st.session_state.users_db:
                 for u_mob, u_data in st.session_state.users_db.items():
-                    st.write(f"**नाम:** {u_data.get('name')} | **मो.:** {u_mob} | **पासवर्ड:** {u_data.get('password')}")
+                    st.write(f"• {u_data.get('name')} ({u_mob})")
             else:
-                st.caption("अभी कोई छात्र रजिस्टर्ड नहीं है।")
+                st.caption("कोई छात्र नहीं है।")
 
-# स्टेट इनिशियलाइजेशन
+# राज्य चर (State Variables)
 if "selected_subject" not in st.session_state:
     st.session_state.selected_subject = None
 if "selected_chapter" not in st.session_state:
@@ -299,7 +310,7 @@ if "time_limit_seconds" not in st.session_state:
     st.session_state.time_limit_seconds = 0
 
 # ==========================================
-# 📲 टॉप हेडर: फुल मॉक आइकॉन व शेयर बटन
+# 📲 टॉप हेडर: फुल मॉक आइकॉन (टॉप मिडिल) एवं शेयर बटन
 # ==========================================
 col_h1, col_h2, col_h3 = st.columns([1, 2, 1])
 with col_h2:
@@ -314,7 +325,7 @@ with col_h2:
 with col_h3:
     components.html("""
     <div style="text-align: right; margin-top: 5px;">
-        <button id="shareBtn" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; border: none; padding: 6px 12px; font-size: 13px; font-weight: bold; border-radius: 15px; cursor: pointer;">📲 शेयर करें</button>
+        <button id="shareBtn" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; border: none; padding: 6px 12px; font-size: 13px; font-weight: bold; border-radius: 15px; cursor: pointer;">📲 शेयर</button>
     </div>
     <script>
     document.getElementById('shareBtn').addEventListener('click', async () => {
@@ -325,11 +336,11 @@ with col_h3:
     """, height=40)
 
 # ==========================================
-# 🎯 1. फुल मॉक टेस्ट स्क्रीन
+# 🏆 1. फुल मॉक टेस्ट स्क्रीन
 # ==========================================
 if st.session_state.is_full_mock_mode:
     st.button("⬅ वापस डैशबोर्ड पर जाएं", on_click=lambda: st.session_state.update({"is_full_mock_mode": False}))
-    st.title("🏆 Full Length Mock Test Portal")
+    st.title("🏆 Full Length Mock Test")
     st.write("---")
 
     fm_key = "full_mock_main_exam"
@@ -341,17 +352,17 @@ if st.session_state.is_full_mock_mode:
         with st.expander("➕ फुल मॉक में नया प्रश्न जोड़ें (एडमिन)", expanded=False):
             with st.form("fm_add_q_form"):
                 fm_qt = st.text_area("प्रश्न टेक्स्ट:")
-                fm_i = st.file_uploader("प्रश्न फोटो:", type=["png", "jpg", "jpeg"])
+                fm_i = st.file_uploader("प्रश्न फोटो:", type=["png", "jpg", "jpeg"], key="fm_img_up")
                 
                 c1, c2 = st.columns(2)
                 with c1: 
-                    fm_oa = st.text_input("विकल्प A")
-                    fm_oc = st.text_input("विकल्प C")
+                    fm_oa = st.text_input("विकल्प A", key="fm_a")
+                    fm_oc = st.text_input("विकल्प C", key="fm_c")
                 with c2: 
-                    fm_ob = st.text_input("विकल्प B")
-                    fm_od = st.text_input("विकल्प D")
+                    fm_ob = st.text_input("विकल्प B", key="fm_b")
+                    fm_od = st.text_input("विकल्प D", key="fm_d")
                 
-                fm_ans = st.selectbox("सही उत्तर:", ["A", "B", "C", "D"])
+                fm_ans = st.selectbox("सही उत्तर:", ["A", "B", "C", "D"], key="fm_ans_sel")
                 
                 if st.form_submit_button("फुल मॉक प्रश्न सेव करें 💾"):
                     final_fm_img = compress_and_convert_to_bytes(Image.open(fm_i)) if fm_i else None
@@ -374,7 +385,7 @@ if st.session_state.is_full_mock_mode:
     past_fm_attempts = st.session_state.attempt_history.get(history_key_fm, [])
 
     if not st.session_state.quiz_started and not st.session_state.submitted:
-        st.write(f"**उपलब्ध फुल मॉक प्रश्न:** {len(full_mock_questions)}")
+        st.write(f"**कुल उपलब्ध फुल मॉक प्रश्न:** {len(full_mock_questions)}")
         
         c_m1, c_m2 = st.columns(2)
         with c_m1:
@@ -390,7 +401,7 @@ if st.session_state.is_full_mock_mode:
                 st.session_state.user_answers = {}
                 st.rerun()
         else:
-            st.warning("फिलहाल कोई फुल मॉक प्रश्न उपलब्ध नहीं हैं।")
+            st.warning("फिलहाल कोई फुल मॉक प्रश्न उपलब्ध नहीं हैं। (एडमिन द्वारा जोड़े जाने बाकी हैं)")
 
     elif st.session_state.quiz_started and not st.session_state.submitted:
         if st.session_state.time_limit_seconds > 0:
@@ -428,11 +439,11 @@ if st.session_state.is_full_mock_mode:
             st.rerun()
 
 # ==========================================
-# 🎯 2. मुख्य विषय एवं चैप्टर स्क्रीन
+# 🎯 2. मुख्य विषय एवं चैप्टर ग्रिड (RWA App Style Interface)
 # ==========================================
 elif st.session_state.selected_subject is None:
-    st.markdown("### 📖 विषय सूची (Subjects)")
-    st.caption("नीचे दिए गए विषयों पर क्लिक करके अभ्यास शुरू करें:")
+    st.markdown("### 📚 विषय सूची (Subjects)")
+    st.caption("नीचे दिए गए किसी भी विषय पर क्लिक करके अपने चैप्टर्स व मॉक टेस्ट एक्सेस करें:")
 
     all_active_subjects = list(st.session_state.subjects_data.keys())
     cols = st.columns(3)
@@ -440,10 +451,10 @@ elif st.session_state.selected_subject is None:
     for index, subj in enumerate(all_active_subjects):
         with cols[index % 3]:
             with st.container(border=True):
-                st.markdown(f"<h3 style='text-align: center;'>{subj}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h4 style='text-align: center; color: #1E3A8A;'>{subj}</h4>", unsafe_allow_html=True)
                 chaps = st.session_state.subjects_data.get(subj, [])
-                st.caption(f"📑 कुल चैप्टर: {len(chaps)}")
-                if st.button(f"ओपन करें ➔", key=f"subj_btn_{index}", use_container_width=True, type="primary"):
+                st.caption(f"📑 कुल अध्याय: {len(chaps)}")
+                if st.button(f"क्लिक करें ➔", key=f"subj_btn_{index}", use_container_width=True, type="primary"):
                     st.session_state.selected_subject = subj
                     st.rerun()
 
@@ -471,7 +482,7 @@ elif st.session_state.selected_chapter is None:
         with cols[index % 2]:
             with st.container(border=True):
                 st.write(f"📑 **{chap}**")
-                if st.button("टेस्ट लगाएं ✍️", key=f"chap_click_{index}", use_container_width=True):
+                if st.button("मॉक टेस्ट लगाएं ✍️", key=f"chap_click_{index}", use_container_width=True):
                     st.session_state.selected_chapter = chap
                     st.rerun()
 
@@ -497,11 +508,12 @@ else:
     current_questions = st.session_state.all_questions_db.get(current_test_key, [])
     st.session_state.active_questions_list = current_questions
 
+    # एडमिन के लिए प्रश्न जोड़ने का ऑप्शन (सेव होते ही फॉर्म खाली और तुरंत नया जोड़ने का विकल्प)
     if is_admin_user:
         with st.expander("➕ इस चैप्टर में नया प्रश्न जोड़ें (एडमिन)", expanded=False):
-            with st.form("chapter_add_q_form"):
+            with st.form(key=f"chapter_add_q_form_{len(current_questions)}"):
                 q_t = st.text_area("प्रश्न लिखें:")
-                q_i = st.file_uploader("प्रश्न की फोटो:", type=["png", "jpg", "jpeg"])
+                q_i = st.file_uploader("प्रश्न की फोटो (वैकल्पिक):", type=["png", "jpg", "jpeg"])
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -528,7 +540,7 @@ else:
                     st.session_state.all_questions_db[current_test_key].append(new_item)
                     save_permanent_data()
                     st.success("✅ प्रश्न सफलतापूर्वक सेव हो गया! अगला प्रश्न दर्ज करें।")
-                    time.sleep(0.8)
+                    time.sleep(0.5)
                     st.rerun()
 
     history_key_user = f"{current_user}_{current_test_key}"
@@ -555,7 +567,7 @@ else:
                 st.session_state.user_answers = {}
                 st.rerun()
         else:
-            st.warning("इस चैप्टर में अभी कोई प्रश्न नहीं जोड़े गए हैं।")
+            st.warning("इस चैप्टर में अभी कोई प्रश्न नहीं जोड़े गए हैं। (एडमिन द्वारा जोड़े जाने बाकी हैं)")
 
     elif st.session_state.quiz_started and not st.session_state.submitted:
         if st.session_state.time_limit_seconds > 0:
