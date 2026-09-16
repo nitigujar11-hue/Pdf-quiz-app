@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 import time
 import io
+import os
+import pickle
 from PIL import Image
 from streamlit_cropper import st_cropper
 
@@ -10,6 +12,9 @@ st.set_page_config(page_title="ALL SUBJECT TEST", page_icon="📝", layout="wide
 
 # एडमिन पासवर्ड
 ADMIN_PASSWORD = "NINI@123"
+
+# सर्वर पर परमानेंट डेटाबेस फाइल का नाम
+DB_FILE = "app_quiz_database.pkl"
 
 # डिफ़ॉल्ट विषय और चैप्टर्स का डेटा
 DEFAULT_SUBJECTS = {
@@ -49,9 +54,69 @@ DEFAULT_SUBJECTS = {
     ]
 }
 
-# स्टेट इनिशियलाइजेशन
+# ==========================================
+# 💾 2-WAY SYNC: परमानेंट डेटाबेस लोड एवं सेव फंक्शन
+# ==========================================
+def load_permanent_data():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "rb") as f:
+                return pickle.load(f)
+        except Exception:
+            pass
+    return {"subjects": DEFAULT_SUBJECTS, "questions": {}, "attempts": {}}
+
+def save_permanent_data():
+    payload = {
+        "subjects": st.session_state.subjects_data,
+        "questions": st.session_state.all_questions_db,
+        "attempts": st.session_state.attempt_history
+    }
+    with open(DB_FILE, "wb") as f:
+        pickle.dump(payload, f)
+
+# डेटा लोड करें
+initial_data = load_permanent_data()
+
 if "subjects_data" not in st.session_state:
-    st.session_state.subjects_data = DEFAULT_SUBJECTS
+    st.session_state.subjects_data = initial_data.get("subjects", DEFAULT_SUBJECTS)
+if "all_questions_db" not in st.session_state:
+    st.session_state.all_questions_db = initial_data.get("questions", {})
+if "attempt_history" not in st.session_state:
+    st.session_state.attempt_history = initial_data.get("attempts", {})
+
+# ==========================================
+# 🚀 100% ऑटोमैटिक ऐप वर्ज़न चेकर (App ↔ Web Sync)
+# ==========================================
+def get_dynamic_version():
+    try:
+        total_q = sum(len(v) for v in st.session_state.all_questions_db.values())
+        total_c = sum(len(v) for v in st.session_state.subjects_data.values())
+        file_time = os.path.getmtime(DB_FILE) if os.path.exists(DB_FILE) else os.path.getmtime(__file__)
+        return f"v{datetime.fromtimestamp(file_time).strftime('%y%m%d%H%M')}_{total_c}_{total_q}"
+    except Exception:
+        return "v1.0"
+
+CURRENT_SYSTEM_VERSION = get_dynamic_version()
+
+if "client_app_version" not in st.session_state:
+    st.session_state.client_app_version = CURRENT_SYSTEM_VERSION
+
+# ऑटो-अपडेट पॉप-अप विंडो
+if st.session_state.client_app_version != CURRENT_SYSTEM_VERSION:
+    with st.container(border=True):
+        st.warning("🔔 **नया अपडेट उपलब्ध है!** ऐप/वेबसाइट में नए प्रश्न या बदलाव जोड़े गए हैं।")
+        if st.button("🚀 अभी अपडेट करें (Click to Refresh)", type="primary", use_container_width=True):
+            fresh_data = load_permanent_data()
+            st.session_state.subjects_data = fresh_data.get("subjects", DEFAULT_SUBJECTS)
+            st.session_state.all_questions_db = fresh_data.get("questions", {})
+            st.session_state.attempt_history = fresh_data.get("attempts", {})
+            st.session_state.client_app_version = CURRENT_SYSTEM_VERSION
+            st.toast("✅ ऐप सफलतापूर्वक सिंक व अपडेट हो गया!", icon="🎉")
+            time.sleep(1)
+            st.rerun()
+
+# स्टेट इनिशियलाइजेशन
 if "selected_subject" not in st.session_state:
     st.session_state.selected_subject = None
 if "selected_chapter" not in st.session_state:
@@ -69,35 +134,22 @@ if "start_time" not in st.session_state:
 if "time_limit_seconds" not in st.session_state:
     st.session_state.time_limit_seconds = 0
 
-# डेटाबेस
-if "all_questions_db" not in st.session_state:
-    st.session_state.all_questions_db = {}
-if "attempt_history" not in st.session_state:
-    st.session_state.attempt_history = {}
-
 current_key = f"{st.session_state.selected_subject}_{st.session_state.selected_chapter}"
 current_questions = st.session_state.all_questions_db.get(current_key, [])
-
 
 # ==========================================
 # ⚡ ऑटो-कंप्रेसर फंक्शन (MB को KB में बदलने के लिए)
 # ==========================================
 def compress_and_convert_to_bytes(img, max_width=1000, quality=80):
-    """बड़ी फोटो को ऑटोमैटिक कंप्रेस करके कुछ KB में बदल देता है"""
-    # अगर इमेज RGBA मोड में है तो RGB में बदलें ताकि JPEG सेव हो सके
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
-    
-    # अगर चौड़ाई 1000px से ज्यादा है तो रीसाइज करें
     if img.width > max_width:
         ratio = max_width / float(img.width)
         new_height = int((float(img.height) * float(ratio)))
         img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
-    
     buf = io.BytesIO()
     img.save(buf, format="JPEG", optimize=True, quality=quality)
     return buf.getvalue()
-
 
 # टेस्ट सबमिट एवं रिजल्ट गणना
 def calculate_and_submit_quiz(is_timeout=False):
@@ -140,11 +192,12 @@ def calculate_and_submit_quiz(is_timeout=False):
         "छोड़े गए": unattempted,
         "सटीकता (Accuracy)": f"{accuracy:.1f}%"
     })
-
+    save_permanent_data()
 
 # --- साइडबार: एडमिन लॉगिन और "Editing All" मास्टर कंट्रोल ---
 with st.sidebar:
     st.title("🔐 पोर्टल नियंत्रण")
+    st.caption(f"Sync ID: {CURRENT_SYSTEM_VERSION}")
     
     if not st.session_state.is_admin:
         with st.expander("🔑 एडमिन लॉगिन (केवल ओनर के लिए)"):
@@ -174,7 +227,8 @@ with st.sidebar:
                 if st.button("नया विषय सेव करें ➕"):
                     if new_s_name.strip() and new_s_name not in st.session_state.subjects_data:
                         st.session_state.subjects_data[new_s_name.strip()] = []
-                        st.success(f"'{new_s_name}' जुड़ गया!")
+                        save_permanent_data()
+                        st.success(f"'{new_s_name}' जुड़ गया व सिंक हो गया!")
                         st.rerun()
                     else:
                         st.warning("मान्य नाम डालें!")
@@ -193,6 +247,7 @@ with st.sidebar:
                                 st.session_state.subjects_data[rename_s.strip()] = st.session_state.subjects_data.pop(sel_s)
                                 if st.session_state.selected_subject == sel_s:
                                     st.session_state.selected_subject = rename_s.strip()
+                                save_permanent_data()
                                 st.success("अपडेट हो गया!")
                                 st.rerun()
                     with c_s2:
@@ -201,6 +256,7 @@ with st.sidebar:
                             if st.session_state.selected_subject == sel_s:
                                 st.session_state.selected_subject = None
                                 st.session_state.selected_chapter = None
+                            save_permanent_data()
                             st.warning("विषय हटा दिया गया!")
                             st.rerun()
 
@@ -216,7 +272,8 @@ with st.sidebar:
                     if st.button("चैप्टर सेव करें ➕"):
                         if new_c_name.strip() and new_c_name not in curr_chaps:
                             st.session_state.subjects_data[p_subj].append(new_c_name.strip())
-                            st.success("चैप्टर जुड़ गया!")
+                            save_permanent_data()
+                            st.success("चैप्टर जुड़ गया व सिंक हो गया!")
                             st.rerun()
 
                     if curr_chaps:
@@ -233,6 +290,7 @@ with st.sidebar:
                                     st.session_state.subjects_data[p_subj][idx] = rename_c.strip()
                                     if st.session_state.selected_chapter == sel_c:
                                         st.session_state.selected_chapter = rename_c.strip()
+                                    save_permanent_data()
                                     st.success("चैप्टर अपडेट हो गया!")
                                     st.rerun()
                         with c_c2:
@@ -240,10 +298,11 @@ with st.sidebar:
                                 st.session_state.subjects_data[p_subj].remove(sel_c)
                                 if st.session_state.selected_chapter == sel_c:
                                     st.session_state.selected_chapter = None
+                                save_permanent_data()
                                 st.warning("चैप्टर हटा दिया गया!")
                                 st.rerun()
 
-            # 3. प्रश्न टैब (लाइव क्रॉपिंग और ऑटोमैटिक कंप्रेसर के साथ)
+            # 3. प्रश्न टैब
             with tab_q:
                 all_s = list(st.session_state.subjects_data.keys())
                 if all_s:
@@ -256,42 +315,54 @@ with st.sidebar:
 
                         st.caption(f"कुल उपलब्ध प्रश्न: {len(target_q_list)}")
 
-                        with st.expander("➕ नया सवाल जोड़ें (Crop & Compress सहित)", expanded=False):
-                            q_t = st.text_area("प्रश्न का टेक्स्ट:")
+                        with st.expander("➕ नया सवाल जोड़ें (विकल्प फोटो सहित)", expanded=False):
+                            st.markdown("### 1. प्रश्न विवरण:")
+                            q_t = st.text_area("प्रश्न टेक्स्ट:")
                             
-                            # प्रश्न फोटो व क्रॉप
-                            q_i = st.file_uploader("प्रश्न फोटो अपलोड करें (MB ऑटोमैटिक KB में बदलेगी):", type=["png", "jpg", "jpeg"], key="h_qi")
+                            q_i = st.file_uploader("प्रश्न की फोटो:", type=["png", "jpg", "jpeg"], key="h_qi")
                             final_q_img = None
                             if q_i:
                                 pil_img_q = Image.open(q_i)
-                                st.caption("✂️ नीचे बॉक्स को खींचकर मनचाहा हिस्सा क्रॉप करें:")
+                                st.caption("✂️ प्रश्न का हिस्सा क्रॉप करें:")
                                 cropped_q = st_cropper(pil_img_q, realtime_update=True, box_color='#00FF00', aspect_ratio=None, key="crop_q")
-                                
-                                # ऑटोमैटिक कंप्रेस करके KB में बदलना
                                 final_q_img = compress_and_convert_to_bytes(cropped_q)
-                                st.success(f"⚡ फोटो कंप्रेस हो गई! साइज: {len(final_q_img)/1024:.1f} KB")
-                                st.image(final_q_img, caption="कंप्रेस प्रीव्यू", width=250)
+                                st.image(final_q_img, caption="प्रश्न फोटो", width=220)
 
                             st.write("---")
-                            st.markdown("**विकल्प विवरण (टेक्स्ट):**")
-                            op_a = st.text_input("विकल्प A टेक्स्ट:", key="h_ta")
-                            op_b = st.text_input("विकल्प B टेक्स्ट:", key="h_tb")
-                            op_c = st.text_input("विकल्प C टेक्स्ट:", key="h_tc")
-                            op_d = st.text_input("विकल्प D टेक्स्ट:", key="h_td")
+                            st.markdown("### 2. चारों विकल्प (टेक्स्ट या फोटो):")
+                            
+                            col_a1, col_a2 = st.columns(2)
+                            with col_a1: op_a = st.text_input("विकल्प A टेक्स्ट:", key="h_ta")
+                            with col_a2: img_a = st.file_uploader("A फोटो:", type=["png", "jpg", "jpeg"], key="h_ia")
+                            final_img_a = compress_and_convert_to_bytes(Image.open(img_a)) if img_a else None
+
+                            col_b1, col_b2 = st.columns(2)
+                            with col_b1: op_b = st.text_input("विकल्प B टेक्स्ट:", key="h_tb")
+                            with col_b2: img_b = st.file_uploader("B फोटो:", type=["png", "jpg", "jpeg"], key="h_ib")
+                            final_img_b = compress_and_convert_to_bytes(Image.open(img_b)) if img_b else None
+
+                            col_c1, col_c2 = st.columns(2)
+                            with col_c1: op_c = st.text_input("विकल्प C टेक्स्ट:", key="h_tc")
+                            with col_c2: img_c = st.file_uploader("C फोटो:", type=["png", "jpg", "jpeg"], key="h_ic")
+                            final_img_c = compress_and_convert_to_bytes(Image.open(img_c)) if img_c else None
+
+                            col_d1, col_d2 = st.columns(2)
+                            with col_d1: op_d = st.text_input("विकल्प D टेक्स्ट:", key="h_td")
+                            with col_d2: img_d = st.file_uploader("D फोटो:", type=["png", "jpg", "jpeg"], key="h_id")
+                            final_img_d = compress_and_convert_to_bytes(Image.open(img_d)) if img_d else None
 
                             corr = st.selectbox("सही उत्तर चुनें:", ["A", "B", "C", "D"], key="h_corr")
                             
-                            # सॉल्यूशन फोटो व क्रॉप
                             st.write("---")
-                            sol_i = st.file_uploader("सॉल्यूशन फोटो (वैकल्पिक):", type=["png", "jpg", "jpeg"], key="h_sol")
+                            st.markdown("### 3. सॉल्यूशन फोटो (वैकल्पिक):")
+                            sol_i = st.file_uploader("सॉल्यूशन फोटो:", type=["png", "jpg", "jpeg"], key="h_sol")
                             final_sol_img = None
                             if sol_i:
                                 pil_img_s = Image.open(sol_i)
                                 st.caption("✂️ सॉल्यूशन का हिस्सा क्रॉप करें:")
                                 cropped_s = st_cropper(pil_img_s, realtime_update=True, box_color='#0000FF', aspect_ratio=None, key="crop_s")
                                 final_sol_img = compress_and_convert_to_bytes(cropped_s)
-                                st.success(f"⚡ सॉल्यूशन फोटो कंप्रेस हो गई! साइज: {len(final_sol_img)/1024:.1f} KB")
-                                st.image(final_sol_img, caption="सॉल्यूशन प्रीव्यू", width=250)
+                                st.image(final_sol_img, caption="सॉल्यूशन फोटो", width=220)
 
                             if st.button("सवाल सेव करें 💾", key="h_save_q_btn"):
                                 if not q_t and not final_q_img:
@@ -301,31 +372,36 @@ with st.sidebar:
                                         "question_text": q_t if q_t else "नीचे दी गई फोटो को देखकर उत्तर दें:",
                                         "question_image": final_q_img,
                                         "options_text": {
-                                            "A": op_a if op_a else "विकल्प A",
-                                            "B": op_b if op_b else "विकल्प B",
-                                            "C": op_c if op_c else "विकल्प C",
-                                            "D": op_d if op_d else "विकल्प D"
+                                            "A": op_a if op_a else "विकल्प A (फोटो देखें)",
+                                            "B": op_b if op_b else "विकल्प B (फोटो देखें)",
+                                            "C": op_c if op_c else "विकल्प C (फोटो देखें)",
+                                            "D": op_d if op_d else "विकल्प D (फोटो देखें)"
                                         },
-                                        "options_image": {"A": None, "B": None, "C": None, "D": None},
+                                        "options_image": {
+                                            "A": final_img_a,
+                                            "B": final_img_b,
+                                            "C": final_img_c,
+                                            "D": final_img_d
+                                        },
                                         "answer": corr,
                                         "sol_image": final_sol_img
                                     }
                                     if target_db_key not in st.session_state.all_questions_db:
                                         st.session_state.all_questions_db[target_db_key] = []
                                     st.session_state.all_questions_db[target_db_key].append(new_item)
-                                    st.success("सफलतापूर्वक नया प्रश्न सेव हो गया!")
+                                    save_permanent_data()
+                                    st.success("सफलतापूर्वक नया प्रश्न सेव और सिंक हो गया!")
                                     st.rerun()
 
-                        # Delete All
                         if target_q_list:
                             st.divider()
                             if st.button("⚠️ Delete All (इस चैप्टर के सभी प्रश्न हटाएं)", key="hub_del_all_btn", type="secondary"):
                                 st.session_state.all_questions_db[target_db_key] = []
+                                save_permanent_data()
                                 st.warning("सभी प्रश्न हटा दिए गए!")
                                 st.rerun()
                     else:
                         st.caption("इस विषय में कोई चैप्टर नहीं है।")
-
 
 # --- 1. मुख्य स्क्रीन: विषय चयन ---
 if st.session_state.selected_subject is None:
@@ -345,7 +421,6 @@ if st.session_state.selected_subject is None:
                     st.session_state.selected_subject = subj
                     st.rerun()
 
-
 # --- 2. मुख्य स्क्रीन: अध्याय चयन ---
 elif st.session_state.selected_chapter is None:
     st.button("⬅ वापस सभी विषय पर जाएं", on_click=lambda: st.session_state.update({"selected_subject": None}))
@@ -364,7 +439,6 @@ elif st.session_state.selected_chapter is None:
                 if st.button("मॉक टेस्ट लगाएं ✍️", key=f"chap_{index}", use_container_width=True):
                     st.session_state.selected_chapter = chap
                     st.rerun()
-
 
 # --- 3. मुख्य स्क्रीन: मॉक टेस्ट व रिजल्ट ---
 else:
@@ -410,7 +484,6 @@ else:
             )
             st.session_state.time_limit_seconds = time_choice * 60
 
-        # पिछले प्रयासों का रिकॉर्ड
         past_attempts = st.session_state.attempt_history.get(current_key, [])
         if past_attempts:
             with st.expander(f"📜 आपके पिछले प्रयासों का रिकॉर्ड (कुल {len(past_attempts)} बार टेस्ट दिया)", expanded=True):
@@ -442,12 +515,20 @@ else:
         else:
             st.caption(f"नियम: सही पर +{int(st.session_state.get('selected_marks', 1.0))} अंक | गलत पर -{st.session_state.get('selected_neg', 0.0)} अंक | कोई समय सीमा नहीं")
 
-        # प्रत्येक सवाल का प्रदर्शन
         for idx, q in enumerate(current_questions):
             st.markdown(f"### प्रश्न {idx+1}: {q['question_text']}")
             
             if q.get("question_image"):
                 st.image(q["question_image"], width=480)
+
+            opt_imgs = q.get("options_image", {})
+            if any(opt_imgs.values()):
+                cols_opt_img = st.columns(4)
+                for i_k, k in enumerate(["A", "B", "C", "D"]):
+                    with cols_opt_img[i_k]:
+                        if opt_imgs.get(k):
+                            st.caption(f"विकल्प {k}:")
+                            st.image(opt_imgs[k], use_container_width=True)
             
             radio_choices = [
                 f"A) {q['options_text']['A']}",
@@ -458,7 +539,7 @@ else:
             ans = st.radio(f"प्रश्न {idx+1} का उत्तर चुनें:", radio_choices, key=f"ans_{current_key}_{idx}", index=None)
             st.session_state.user_answers[idx] = ans[0] if ans else None
 
-            # सीधे सवाल पर एडमिन एडिट और डिलीट कंट्रोल्स
+            # सीधे प्रश्न पर एडमिन एडिट / डिलीट कंट्रोल्स
             if st.session_state.is_admin:
                 col_inline_ed, col_inline_del = st.columns([1, 1])
                 with col_inline_ed:
@@ -481,13 +562,15 @@ else:
                                     "A": q_edit_a, "B": q_edit_b, "C": q_edit_c, "D": q_edit_d
                                 }
                                 st.session_state.all_questions_db[current_key][idx]["answer"] = q_edit_ans
-                                st.success(f"प्रश्न {idx+1} तुरंत अपडेट कर दिया गया!")
+                                save_permanent_data()
+                                st.success(f"प्रश्न {idx+1} अपडेट व सिंक कर दिया गया!")
                                 st.rerun()
 
                 with col_inline_del:
                     if st.button(f"🗑️ प्रश्न {idx+1} हटाएं", key=f"inline_del_btn_{idx}", type="secondary"):
                         st.session_state.all_questions_db[current_key].pop(idx)
-                        st.success(f"प्रश्न {idx+1} डिलीट कर दिया गया!")
+                        save_permanent_data()
+                        st.success(f"प्रश्न {idx+1} डिलीट व सिंक कर दिया गया!")
                         st.rerun()
 
             st.write("---")
@@ -534,6 +617,15 @@ else:
                 st.write(f"**प्रश्न {idx+1}:** {q['question_text']}")
                 if q.get("question_image"):
                     st.image(q["question_image"], width=420)
+
+                opt_imgs = q.get("options_image", {})
+                if any(opt_imgs.values()):
+                    cols_sol_opt = st.columns(4)
+                    for i_k, k in enumerate(["A", "B", "C", "D"]):
+                        with cols_sol_opt[i_k]:
+                            if opt_imgs.get(k):
+                                st.caption(f"विकल्प {k}:")
+                                st.image(opt_imgs[k], use_container_width=True)
 
                 st.write(f"**आपका चयन:** {ans if ans else 'उत्तर नहीं दिया'}")
                 st.write(f"**सही विकल्प:** :green[{q['answer']}]")
