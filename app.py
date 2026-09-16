@@ -9,55 +9,60 @@ import streamlit.components.v1 as components
 from PIL import Image, ImageOps
 from streamlit_cropper import st_cropper
 
-st.set_page_config(page_title="RWA Style Home Portal", page_icon="📝", layout="wide")
+st.set_page_config(page_title="RWA Home Portal", page_icon="📝", layout="centered")
 
 # ==========================================
-# 🎨 RWA जैसी होमपेज ग्रिड और कार्ड थीम CSS
+# 🎨 RWA जैसी 3x3 कॉम्पैक्ट ग्रिड थीम (Compact UI)
 # ==========================================
 st.markdown("""
     <style>
     .main {
-        background-color: #f8fafc;
+        background-color: #f4f6f9;
     }
     .hero-banner {
-        background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
-        padding: 15px;
-        border-radius: 12px;
+        background: linear-gradient(135deg, #ffffff 0%, #edf2f7 100%);
+        padding: 12px;
+        border-radius: 10px;
         border: 1px solid #e2e8f0;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         text-align: center;
     }
-    .grid-card {
+    .grid-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .grid-row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+    .grid-box {
         background: #ffffff;
-        padding: 20px 10px;
+        padding: 15px 5px;
         border-radius: 12px;
         text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        border: 1px solid #edf2f7;
-        margin-bottom: 15px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        border: 1px solid #e2e8f0;
+        width: 32%;
         cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    .grid-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
-        border-color: #3b82f6;
     }
     .grid-icon {
-        font-size: 30px;
-        margin-bottom: 8px;
+        font-size: 24px;
+        margin-bottom: 5px;
     }
     .grid-title {
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 600;
         color: #1e293b;
     }
     .test-card {
         background: #ffffff;
-        padding: 15px 20px;
-        border-radius: 10px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 12px;
+        padding: 12px 15px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        margin-bottom: 10px;
         border-left: 4px solid #1E3A8A;
     }
     </style>
@@ -67,7 +72,7 @@ st.markdown("""
 # 🔐 डेटाबेस कॉन्फ़िगरेशन
 # ==========================================
 ADMIN_PASSWORD = "NINI@123"
-DB_FILE = "app_quiz_database_rwa_home.pkl"
+DB_FILE = "app_quiz_database_rwa_3x3.pkl"
 
 DEFAULT_SUBJECTS = {
     "🔢 Mathematics (गणित)": [
@@ -106,9 +111,6 @@ DEFAULT_SUBJECTS = {
     ]
 }
 
-# ==========================================
-# 💾 डेटाबेस लोड एवं सेव फंक्शन
-# ==========================================
 def load_permanent_data():
     if os.path.exists(DB_FILE):
         try:
@@ -156,12 +158,12 @@ if "attempt_history" not in st.session_state:
 # 🔐 लॉगिन स्क्रीन
 # ==========================================
 if st.session_state.logged_in_user is None:
-    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>📚 RWA Portal Login</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #1E3A8A;'>📚 Test Portal Login</h3>", unsafe_allow_html=True)
     st.write("")
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        tab_login, tab_admin, tab_signup, tab_forgot = st.tabs(["🔑 यूजर लॉगिन", "👨‍🏫 एडमिन", "📝 नया अकाउंट", "🔄 रिकवर"])
+        tab_login, tab_admin, tab_signup, tab_forgot = st.tabs(["🔑 यूजर", "👨‍🏫 एडमिन", "📝 नया", "🔄 रिकवर"])
 
         with tab_login:
             log_mob = st.text_input("मोबाइल नंबर:", key="u_log_mob")
@@ -214,9 +216,6 @@ if st.session_state.logged_in_user is None:
 current_user = st.session_state.logged_in_user
 is_admin_user = (st.session_state.user_role == "admin")
 
-# ==========================================
-# ⚡ ऑटो-कंप्रेसर
-# ==========================================
 def compress_and_convert_to_bytes(img, max_width=900, quality=75):
     try:
         img = ImageOps.exif_transpose(img)
@@ -284,7 +283,7 @@ with st.sidebar:
         st.rerun()
 
 # स्टेट वेरिएबल्स
-if "nav_page" not in st.session_state: st.session_state.nav_page = "home" # "home", "free_weekly_tests", "full_mock"
+if "nav_page" not in st.session_state: st.session_state.nav_page = "home"
 if "selected_subject" not in st.session_state: st.session_state.selected_subject = None
 if "selected_chapter" not in st.session_state: st.session_state.selected_chapter = None
 if "quiz_started" not in st.session_state: st.session_state.quiz_started = False
@@ -294,52 +293,53 @@ if "start_time" not in st.session_state: st.session_state.start_time = None
 if "time_limit_seconds" not in st.session_state: st.session_state.time_limit_seconds = 0
 
 # ==========================================
-# 🏠 होम पेज (9 Grid Cards जैसा स्क्रीनशॉट में है)
+# 🏠 होम पेज (3x3 Compact Grid Layout)
 # ==========================================
 if st.session_state.nav_page == "home":
     st.markdown("""
         <div class="hero-banner">
-            <h3 style="color: #1E3A8A; margin:0;">🌟 WELCOME TO TEST PORTAL</h3>
-            <p style="color: #64748b; font-size: 13px; margin: 5px 0 0 0;">Free Weekly Test | PDF Notes | Test Series</p>
+            <h4 style="color: #1E3A8A; margin:0;">🌟 ROJGAR WITH MOCK PORTAL</h4>
+            <p style="color: #64748b; font-size: 11px; margin: 3px 0 0 0;">Free Weekly Test | PDF Notes | Test Series</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 9 ग्रिड आइकॉन लेआउट (स्क्रीनशॉट के अनुसार)
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        st.markdown('<div class="grid-card"><div class="grid-icon">📚</div><div class="grid-title">Paid Classes</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन Paid Classes", key="btn_pc", use_container_width=True): st.info("यह सेक्शन जल्द उपलब्ध होगा!")
-    with c2:
-        st.markdown('<div class="grid-card"><div class="grid-icon">📖</div><div class="grid-title">Free Courses</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन Free Courses", key="btn_fc", use_container_width=True): st.info("यह सेक्शन जल्द उपलब्ध होगा!")
-    with c3:
-        st.markdown('<div class="grid-card" style="border-color: #3b82f6;"><div class="grid-icon">📝</div><div class="grid-title" style="color:#1E3A8A;">Free Weekly Tests</div></div>', unsafe_allow_html=True)
-        if st.button("👉 क्लिक करें (टेस्ट दें)", key="btn_fwt", use_container_width=True, type="primary"):
+    # 3x3 कॉम्पैक्ट ग्रिड (रो 1)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown('<div class="grid-box"><div class="grid-icon">📚</div><div class="grid-title">Paid Classes</div></div>', unsafe_allow_html=True)
+        if st.button("Paid Classes", key="c1", use_container_width=True): st.info("जल्द उपलब्ध!")
+    with col2:
+        st.markdown('<div class="grid-box"><div class="grid-icon">📖</div><div class="grid-title">Free Courses</div></div>', unsafe_allow_html=True)
+        if st.button("Free Courses", key="c2", use_container_width=True): st.info("जल्द उपलब्ध!")
+    with col3:
+        st.markdown('<div class="grid-box" style="border-color:#3b82f6;"><div class="grid-icon">📝</div><div class="grid-title" style="color:#1E3A8A;">Weekly Tests</div></div>', unsafe_allow_html=True)
+        if st.button("👉 Free Tests", key="c3", use_container_width=True, type="primary"):
             st.session_state.nav_page = "free_weekly_tests"
             st.rerun()
 
-    c4, c5, c6 = st.columns(3)
-    with c4:
-        st.markdown('<div class="grid-card"><div class="grid-icon">📊</div><div class="grid-title">Test Series</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन Test Series", key="btn_ts", use_container_width=True): st.info("जल्द उपलब्ध!")
-    with c5:
-        st.markdown('<div class="grid-card"><div class="grid-icon">📁</div><div class="grid-title">PDF Class Notes</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन PDF Notes", key="btn_pn", use_container_width=True): st.info("जल्द उपलब्ध!")
-    with c6:
-        st.markdown('<div class="grid-card"><div class="grid-icon">📖</div><div class="grid-title">Books</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन Books", key="btn_bk", use_container_width=True): st.info("जल्द उपलब्ध!")
+    # 3x3 कॉम्पैक्ट ग्रिड (रो 2)
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        st.markdown('<div class="grid-box"><div class="grid-icon">📊</div><div class="grid-title">Test Series</div></div>', unsafe_allow_html=True)
+        if st.button("Test Series", key="c4", use_container_width=True): st.info("जल्द उपलब्ध!")
+    with col5:
+        st.markdown('<div class="grid-box"><div class="grid-icon">📁</div><div class="grid-title">Class Notes</div></div>', unsafe_allow_html=True)
+        if st.button("Class Notes", key="c5", use_container_width=True): st.info("जल्द उपलब्ध!")
+    with col6:
+        st.markdown('<div class="grid-box"><div class="grid-icon">📖</div><div class="grid-title">Books</div></div>', unsafe_allow_html=True)
+        if st.button("Books", key="c6", use_container_width=True): st.info("जल्द उपलब्ध!")
 
-    c7, c8, c9 = st.columns(3)
-    with c7:
-        st.markdown('<div class="grid-card"><div class="grid-icon">📋</div><div class="grid-title">Syllabus</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन Syllabus", key="btn_sy", use_container_width=True): st.info("जल्द उपलब्ध!")
-    with c8:
-        st.markdown('<div class="grid-card"><div class="grid-icon">⏰</div><div class="grid-title">Timetable</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन Timetable", key="btn_tt", use_container_width=True): st.info("जल्द उपलब्ध!")
-    with c9:
-        st.markdown('<div class="grid-card"><div class="grid-icon">🎯</div><div class="grid-title">Previous Year</div></div>', unsafe_allow_html=True)
-        if st.button("ओपन Previous Year", key="btn_py", use_container_width=True): st.info("जल्द उपलब्ध!")
+    # 3x3 कॉम्पैक्ट ग्रिड (रो 3)
+    col7, col8, col9 = st.columns(3)
+    with col7:
+        st.markdown('<div class="grid-box"><div class="grid-icon">📋</div><div class="grid-title">Syllabus</div></div>', unsafe_allow_html=True)
+        if st.button("Syllabus", key="c7", use_container_width=True): st.info("जल्द उपलब्ध!")
+    with col8:
+        st.markdown('<div class="grid-box"><div class="grid-icon">⏰</div><div class="grid-title">Timetable</div></div>', unsafe_allow_html=True)
+        if st.button("Timetable", key="c8", use_container_width=True): st.info("जल्द उपलब्ध!")
+    with col9:
+        st.markdown('<div class="grid-box"><div class="grid-icon">🎯</div><div class="grid-title">Previous Year</div></div>', unsafe_allow_html=True)
+        if st.button("Previous Year", key="c9", use_container_width=True): st.info("जल्द उपलब्ध!")
 
 # ==========================================
 # 📑 फ्री वीकली टेस्ट के अंदर सब्जेक्ट्स लिस्ट
@@ -360,7 +360,7 @@ elif st.session_state.nav_page == "free_weekly_tests":
             chaps = st.session_state.subjects_data.get(subj, [])
             st.markdown(f"""
                 <div class="test-card">
-                    <b>{subj}</b><br><span style="font-size: 12px; color: #64748b;">कुल चैप्टर्स: {len(chaps)}</span>
+                    <b>{subj}</b><br><span style="font-size: 11px; color: #64748b;">कुल चैप्टर्स: {len(chaps)}</span>
                 </div>
             """, unsafe_allow_html=True)
             if st.button(f"ओपन करें ➔", key=f"subj_btn_{index}", use_container_width=True):
