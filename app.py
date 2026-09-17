@@ -17,7 +17,7 @@ st.set_page_config(page_title="RWA Home Portal", page_icon="📝", layout="cente
 st.markdown("""
     <style>
     .main {
-        background-color: #f4f6f9;
+        background-color: #black;
     }
     .hero-banner {
         background: linear-gradient(135deg, #ffffff 0%, #edf2f7 100%);
