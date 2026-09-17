@@ -284,6 +284,7 @@ with st.sidebar:
 
 # स्टेट वेरिएबल्स
 if "nav_page" not in st.session_state: st.session_state.nav_page = "home"
+if "selected_test_category" not in st.session_state: st.session_state.selected_test_category = "Free Weekly Tests"
 if "selected_subject" not in st.session_state: st.session_state.selected_subject = None
 if "selected_chapter" not in st.session_state: st.session_state.selected_chapter = None
 if "quiz_started" not in st.session_state: st.session_state.quiz_started = False
@@ -333,7 +334,7 @@ if st.session_state.nav_page == "home":
     col7, col8, col9 = st.columns(3)
     with col7:
         st.markdown('<div class="grid-box"><div class="grid-icon">📋</div><div class="grid-title">Syllabus</div></div>', unsafe_allow_html=True)
-        if st.button("Syllabus", key="c7", use_container_width=True): st.info("जल्द उपलब्ध!")
+        if st.button("Syllabus", key="c7", use_container_width=True): st.info("जلد उपलब्ध!")
     with col8:
         st.markdown('<div class="grid-box"><div class="grid-icon">⏰</div><div class="grid-title">Timetable</div></div>', unsafe_allow_html=True)
         if st.button("Timetable", key="c8", use_container_width=True): st.info("जल्द उपलब्ध!")
@@ -342,7 +343,7 @@ if st.session_state.nav_page == "home":
         if st.button("Previous Year", key="c9", use_container_width=True): st.info("जल्द उपलब्ध!")
 
 # ==========================================
-# 📑 फ्री वीकली टेस्ट के अंदर सब्जेक्ट्स लिस्ट
+# 📑 फ्री वीकली टेस्ट के अंदर सब्जेक्ट्स और टेस्ट श्रेणियाँ
 # ==========================================
 elif st.session_state.nav_page == "free_weekly_tests":
     if st.button("⬅ होम पेज पर जाएं"):
@@ -351,9 +352,16 @@ elif st.session_state.nav_page == "free_weekly_tests":
         st.session_state.selected_chapter = None
         st.rerun()
 
+    # --- RWA App जैसा Sub-Category Selection (Free Weekly Tests / Sectional / Mini Mock) ---
+    st.markdown("### 🎯 Free Weekly Tests Portal")
+    test_categories = ["🏆 Free Weekly Tests", "📚 Sectional Tests", "⚡ Mini Mock Tests"]
+    selected_cat = st.radio("टेस्ट का प्रकार चुनें:", test_categories, horizontal=True)
+    st.session_state.selected_test_category = selected_cat
+    st.write("---")
+
     # --- 1. विषय चयन स्क्रीन ---
     if st.session_state.selected_subject is None:
-        st.markdown("### 📄 Free Weekly Tests - विषय सूची")
+        st.markdown(f"#### 📄 {selected_cat} - विषय सूची")
         all_active_subjects = list(st.session_state.subjects_data.keys())
 
         for index, subj in enumerate(all_active_subjects):
@@ -415,7 +423,7 @@ elif st.session_state.nav_page == "free_weekly_tests":
         st.subheader(f"📌 {st.session_state.selected_subject} ➔ {st.session_state.selected_chapter}")
         st.divider()
 
-        current_test_key = f"{st.session_state.selected_subject}_{st.session_state.selected_chapter}"
+        current_test_key = f"{st.session_state.selected_test_category}_{st.session_state.selected_subject}_{st.session_state.selected_chapter}"
         st.session_state.current_test_key = current_test_key
         current_questions = st.session_state.all_questions_db.get(current_test_key, [])
         st.session_state.active_questions_list = current_questions
